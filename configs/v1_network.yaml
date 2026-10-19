@@ -1,0 +1,13 @@
+# Snapshot; QueryMincoConfig has identical Python defaults.
+# No Baseline config or later-stage components are loaded.
+depth_channels: 2
+depth_height: 128
+depth_width: 160
+state_dim: 12
+embed_dim: 128
+num_queries: 6
+decoder_layers: 2
+attention_heads: 4
+ffn_dim: 256
+output_dim: 21
+dropout: 0.0
