@@ -48,6 +48,7 @@ def main():
         test("reject_M0", lambda: bad_manifest("m0", lambda m: m["rows"][0].update(M=0)))
         test("reject_wrong_cache_SHA", lambda: bad_manifest("sha", lambda m: m["rows"][0]["artifact"].update(sha256="0"*64)))
         test("reject_path_escape", lambda: bad_manifest("escape", lambda m: m.update(roots=[str(out)])))
+        test("reject_relative_cache_root", lambda: bad_manifest("relative", lambda m: m.update(roots=["."])))
         def bad_arrays(name, mutate):
             with np.load(ds.rows["synthetic_near"]["artifact"]["path"]) as z: arr = {k: z[k].copy() for k in z.files}
             mutate(arr)

@@ -14,6 +14,7 @@ class FrozenDataset:
         require(m["schema"] == 1 and m["qualification"] in ("TRAIN", "SYNTHETIC_TEST_ONLY"), "DATA_QUALIFICATION")
         require((profile == "disposable_single_step_v1") == (m["qualification"] == "SYNTHETIC_TEST_ONLY"),
                 "PROFILE_DATA_QUALIFICATION")
+        require(all(Path(p).is_absolute() for p in m["roots"]), "CACHE_ROOTS_MUST_BE_ABSOLUTE")
         self.roots = [Path(p).resolve() for p in m["roots"]]
         require(self.roots and all(p.is_absolute() and p.is_dir() for p in self.roots), "CACHE_ROOTS")
         self.rows = {}
