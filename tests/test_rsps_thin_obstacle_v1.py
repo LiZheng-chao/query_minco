@@ -57,4 +57,27 @@ class ThinAudit(unittest.TestCase):
             q,_=physical_loss(p,v,a,[box],geometry_bound=[True])
             self.assertTrue(torch.isfinite(q).all())
         with self.assertRaises(ValueError):refined_segment_samples(tr,[box],strategy='unknown')
+    def test_frozen_grid_finite_difference(self):
+        # The selection itself is detached; validate precisely that surrogate.
+        from query_minco.trajectory.sampler_e1 import evaluate_piece
+        base=torch.zeros(1,6,3,3,6,dtype=torch.double);base[:,:,:,0,1]=1
+        dt=torch.ones(1,6,3,dtype=torch.double)
+        box=torch.tensor([[[.5001,-1.,-1.],[.5003,1.,1.]]],dtype=torch.double)
+        for strategy in ['local','geometry']:
+            c=base.clone().requires_grad_();d=dt.clone().requires_grad_()
+            tr=MincoTrajectory(c,d,torch.ones(1,6,dtype=torch.bool),{})
+            p,v,a,_=refined_segment_samples(tr,[box],strategy=strategy)
+            u=p[...,0].reshape(1,6,3,-1).detach()
+            gaps=u[...,1:]-u[...,:-1]
+            trap=torch.cat([gaps[...,:1]/2,(gaps[...,:-1]+gaps[...,1:])/2,gaps[...,-1:]/2],-1)
+            def frozen(cc,dd):
+                pos,vel=(evaluate_piece(cc,u*dd[...,None],k).flatten(2,3) for k in (0,1))
+                weights=(trap*dd[...,None]/dd.sum(-1)[...,None,None]).flatten(2,3)
+                return physical_loss(pos,vel,weights,[box],geometry_bound=[True],radius=0.,eps=.01)[0].mean()
+            actual=physical_loss(p,v,a,[box],geometry_bound=[True],radius=0.,eps=.01)[0].mean()
+            ga=torch.autograd.grad(actual,(c,d))
+            gf=torch.autograd.grad(frozen(c,d),(c,d))
+            for x,y in zip(ga,gf):torch.testing.assert_close(x,y)
+            self.assertTrue(torch.autograd.gradcheck(frozen,(c,d),fast_mode=True,atol=2e-5,rtol=1e-3))
+
 if __name__=='__main__':unittest.main(verbosity=2)
