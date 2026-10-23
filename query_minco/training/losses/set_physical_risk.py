@@ -116,3 +116,63 @@ def reduce_set(per_query, matched=None, matched_strength=1., unmatched_strength=
         raise ValueError('positive finite group strengths required')
     weight = torch.where(matched, torch.full_like(per_query, matched_strength), torch.full_like(per_query, unmatched_strength))
     return ((per_query * weight).sum(-1) / weight.sum(-1)).mean()
+
+
+def refined_segment_samples(trajectory, boxes, strategy='local', base_points=32, levels=3, band=.08):
+    """Optional detached sample selection; SI trapezoids, not a certificate.
+
+    local: midpoint refinement where endpoint clearance is near a solid.
+    geometry: polynomial roots at box faces/centres plus axis extrema.
+    Topology/selected normalized times are detached. Gradient differentiates
+    evaluation at those times, not the root-finding or selection operation.
+    """
+    import numpy as np
+    from query_minco.evaluation.validation import roots
+    # Reuse validation without changing the legacy sampler.
+    segment_samples(trajectory, base_points)
+    if strategy not in ('local', 'geometry') or type(levels) is not int or not 0 <= levels <= 8 or not math.isfinite(band) or band <= 0:
+        raise ValueError('invalid refinement strategy/budget')
+    c, dt = trajectory.coeffs, trajectory.durations
+    if len(boxes) != len(c):
+        raise ValueError('refinement geometry batch')
+    grids = []
+    for b in range(len(c)):
+        field = boxes[b]
+        _finite(field, 'refinement boxes')
+        if field.ndim != 3 or field.shape[1:] != (2,3):
+            raise ValueError('refinement boxes shape')
+        if len(field):
+            box_sdf(c[b,0,0,:,0][None], field)
+        for q in range(6):
+            for s in range(3):
+                coeff = c[b,q,s]; T = dt[b,q,s]
+                u = np.linspace(0,1,base_points).tolist()
+                if strategy == 'geometry':
+                    cn = coeff.detach().double().cpu().numpy(); t = float(T.detach())
+                    for axis in range(3):
+                        u.extend(x/t for x in roots(np.polynomial.polynomial.polyder(cn[axis]), t))
+                        for box in field.detach().cpu().numpy():
+                            for value in [box[0,axis],box[1,axis],box[:,axis].mean()]:
+                                poly = cn[axis].copy(); poly[0] -= value
+                                u.extend(x/t for x in roots(poly,t))
+                    u = sorted(set(u))
+                    u = sorted(set(u + [(x+y)/2 for x,y in zip(u[:-1],u[1:])]))
+                elif len(field):
+                    with torch.no_grad():
+                        for _ in range(levels):
+                            ts = torch.tensor(u,device=c.device,dtype=c.dtype)*T.detach()
+                            p = evaluate_piece(coeff.detach(),ts)
+                            d = box_sdf(p,field)
+                            extra = [(u[k]+u[k+1])/2 for k in range(len(u)-1)
+                                     if min(float(d[k]),float(d[k+1])) < band]
+                            u = sorted(set(u+extra))
+                grids.append(u)
+    maximum = max(map(len,grids))
+    u = c.new_tensor([g+[1.]*(maximum-len(g)) for g in grids]).reshape(len(c),6,3,maximum)
+    local = u*dt[...,None]
+    p,v = (evaluate_piece(c,local,k).flatten(2,3) for k in (0,1))
+    gaps = u[...,1:]-u[...,:-1]
+    trap = torch.cat([gaps[...,:1]/2,(gaps[...,:-1]+gaps[...,1:])/2,gaps[...,-1:]/2],-1)
+    weights = (trap*dt[...,None]/dt.sum(-1)[...,None,None]).flatten(2,3)
+    _finite(p,'refined positions');_finite(v,'refined velocity')
+    return p,v,weights,dict(strategy=strategy,points_per_piece=maximum,actual_selected_points=sum(map(len,grids)))
