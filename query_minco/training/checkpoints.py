@@ -16,7 +16,7 @@ def cpu_tree(v):
         return type(v)(cpu_tree(x) for x in v)
     return v
 
-def save_checkpoint(run, model, optimizer, spec, step, name=None):
+def save_checkpoint(run, model, optimizer, spec, step, name=None, scheduler_id="recipe.lr_at; no separate scheduler object"):
     filename = name or ("checkpoint_step%04d.pt" % step)
     p = run / filename
     npstate = np.random.get_state()
@@ -28,7 +28,7 @@ def save_checkpoint(run, model, optimizer, spec, step, name=None):
                 optimizer_state_dict=cpu_tree(optimizer.state_dict()),
                 completed_optimizer_updates=step, order_cursor=step, spec=spec,
                 spec_sha256=identity(spec), weights_sha256=state_sha(model), rng=rng,
-                next_lr_index=step, scheduler="recipe.lr_at; no separate scheduler object")
+                next_lr_index=step, scheduler=scheduler_id)
     with p.open("xb") as f:
         torch.save(blob, f)
         f.flush(); os.fsync(f.fileno())

@@ -36,9 +36,12 @@ def worker_probe(run, spec):
     write(run / "ISOLATION.json", dict(passed=True, source_probes=probes,
           project_writable_path=str(run), historical_tree_masked=True, network_unshared=True))
 
-def launch(spec, config_path, destination, action, authorization=None, preflight=None):
+def launch(spec, config_path, destination, action, authorization=None, preflight=None, extension=None):
     """No caller-provided arbitrary command. Output mkdir is exclusive; no resume."""
-    ds, order, qualified = qualify(spec)
+    if extension is not None:
+        require(extension is True and spec['profile'] == 'rsps_pilot32_v1', 'UNREGISTERED_LIFECYCLE_EXTENSION')
+        from . import pilot as extension
+    ds, order, qualified = (qualify if extension is None else extension.qualify)(spec)
     paths = [Path(config_path).resolve(), ds.path, order.path, artifact(spec["initialization"]["artifact"])]
     paths += ds.files
     if spec["profile"] == "b2c1_reference_v1":
@@ -47,7 +50,7 @@ def launch(spec, config_path, destination, action, authorization=None, preflight
     paths += [ROOT / n for n in spec["code"]["files"]]
     paths += [Path(__file__).resolve()]
     if authorization:
-        authorize(spec, authorization); paths.append(Path(authorization).resolve())
+        (authorize if extension is None else extension.authorize)(spec, authorization); paths.append(Path(authorization).resolve())
     if preflight:
         p = read(preflight)
         require(p["passed"] and p["spec_sha256"] == identity(spec), "PREFLIGHT_RECEIPT")
@@ -95,12 +98,14 @@ def launch(spec, config_path, destination, action, authorization=None, preflight
                     "--action", action]
         if action == "train":
             command += ["--authorization", str(Path(authorization).resolve()), "--preflight", str(Path(preflight).resolve())]
+        if extension is not None:
+            command = extension.worker_command(command, spec)
         write(destination / "COMMAND.json", dict(argv=command, executable=sys.executable,
               fd_sources=[str(p) for p in sorted(set(paths), key=str)
                           if any(root == p or root in p.parents for root in masked)],
               authorization=read(authorization) if authorization else None))
         with (destination / "stdout.log").open("xb") as out, (destination / "stderr.log").open("xb") as err:
-            code = subprocess.run(command, stdout=out, stderr=err, pass_fds=tuple(fds), env=env).returncode
+            code = subprocess.run(command, stdout=out, stderr=err, pass_fds=tuple(fds), env=env, **({} if extension is None else {"timeout":spec["resources"]["max_wall_s"]})).returncode
         write(destination / "PROCESS_EXIT.json", dict(returncode=code))
     except BaseException as e:
         write(destination / "LAUNCH_ERROR.json", dict(error=repr(e), traceback=traceback.format_exc(), returncode=code))
@@ -118,7 +123,7 @@ def launch(spec, config_path, destination, action, authorization=None, preflight
     if action == "train":
         from .audit import audit_run
         try:
-            result = audit_run(destination, candidate=True)
+            result = (audit_run if extension is None else extension.audit_run)(destination, candidate=True)
         except BaseException as e:
             write(destination / "STOP.json", dict(reason="CONTENT_AUDIT_FAILED", error=repr(e),
                   traceback=traceback.format_exc(), worker_returncode=code, no_resume=True))
@@ -128,7 +133,7 @@ def launch(spec, config_path, destination, action, authorization=None, preflight
               profile=spec["profile"], synthetic_disposable=spec["profile"] == "disposable_single_step_v1"))
         write(destination / "RUN_SEAL.json", dict(files={str(p.relative_to(destination)): sha(p)
               for p in destination.rglob("*") if p.is_file()}))
-        audit_run(destination)
+        (audit_run if extension is None else extension.audit_run)(destination)
         return result
     result = read(destination / "PREFLIGHT.json")
     write(str(destination / "PREFLIGHT.json") + ".seal.json", dict(sha256=sha(destination / "PREFLIGHT.json")))
