@@ -1,0 +1,2180 @@
+{
+  "schema_version": 1,
+  "method_id": "query_minco_b2c1_c1_e1_v1",
+  "provenance_status": "PARTIALLY_VERIFIED",
+  "r0": {
+    "path": "query_minco/outputs/method_provenance_r0_v1",
+    "seal": "R0_SEAL.json",
+    "seal_sha256": "78ce1c167b9a6c8eede8bb91698531b0d0302473d34142d264a84b941585a244"
+  },
+  "components": {
+    "network": {
+      "id": "network",
+      "path": "query_minco/planner.py",
+      "symbol": "QueryMincoPlanner",
+      "line": 12,
+      "end_line": 57,
+      "sha256": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "evaluation",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+          "current_matches": true
+        }
+      ]
+    },
+    "depth_encoder": {
+      "id": "depth_encoder",
+      "path": "query_minco/depth_encoder.py",
+      "symbol": "DepthEncoder",
+      "line": 39,
+      "end_line": 53,
+      "sha256": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+          "current_matches": true
+        }
+      ]
+    },
+    "state_encoder": {
+      "id": "state_encoder",
+      "path": "query_minco/state_encoder.py",
+      "symbol": "StateEncoder",
+      "line": 6,
+      "end_line": 14,
+      "sha256": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+          "current_matches": true
+        }
+      ]
+    },
+    "query_decoder": {
+      "id": "query_decoder",
+      "path": "query_minco/query_decoder.py",
+      "symbol": "QueryDecoder",
+      "line": 27,
+      "end_line": 47,
+      "sha256": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+          "current_matches": true
+        }
+      ]
+    },
+    "head": {
+      "id": "head",
+      "path": "query_minco/trajectory_head.py",
+      "symbol": "TrajectoryHead",
+      "line": 6,
+      "end_line": 13,
+      "sha256": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+          "current_matches": true
+        }
+      ]
+    },
+    "physical_decoder": {
+      "id": "physical_decoder",
+      "path": "query_minco/trajectory/parameter_decoder.py",
+      "symbol": "PhysicalParameterDecoder",
+      "line": 39,
+      "end_line": 74,
+      "sha256": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+          "current_matches": true
+        }
+      ]
+    },
+    "minco_adapter": {
+      "id": "minco_adapter",
+      "path": "query_minco/trajectory/minco_adapter.py",
+      "symbol": "MincoAdapter",
+      "line": 44,
+      "end_line": 77,
+      "sha256": "244dadc19a3a7fb0e0185b3783b48ed353055394ce91b09187274e8b53751085",
+      "role": "numerical_core",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "244dadc19a3a7fb0e0185b3783b48ed353055394ce91b09187274e8b53751085",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "244dadc19a3a7fb0e0185b3783b48ed353055394ce91b09187274e8b53751085",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "244dadc19a3a7fb0e0185b3783b48ed353055394ce91b09187274e8b53751085",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "244dadc19a3a7fb0e0185b3783b48ed353055394ce91b09187274e8b53751085",
+          "current_matches": true
+        }
+      ]
+    },
+    "minco_solver": {
+      "id": "minco_solver",
+      "path": "YOPO/minco/minco.py",
+      "symbol": "MincoS3NU",
+      "line": 10,
+      "end_line": 179,
+      "sha256": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+      "role": "production_minco",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+          "current_matches": true
+        }
+      ]
+    },
+    "E1_scope": {
+      "id": "E1_scope",
+      "path": "query_minco/experiments/b2c1/execution_revision.py",
+      "symbol": "enabled",
+      "line": 11,
+      "end_line": 24,
+      "sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+      "role": "execution_revision",
+      "usage": [
+        "training",
+        "formal_eval"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/recovery_v1/SOURCE_HASHES.json",
+          "phase": "authoritative",
+          "expected_sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+          "current_matches": true
+        }
+      ]
+    },
+    "E1_postprocessor": {
+      "id": "E1_postprocessor",
+      "path": "query_minco/experiments/b2c1/execution_revision.py",
+      "symbol": "TrajectoryPostprocessor",
+      "line": 6,
+      "end_line": 9,
+      "sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+      "role": "execution_revision",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/recovery_v1/SOURCE_HASHES.json",
+          "phase": "authoritative",
+          "expected_sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "3d96a4e325f5df469e32aec3721556f6be7249d91b640a164086cfd199750ec0",
+          "current_matches": true
+        }
+      ]
+    },
+    "E1_sampler": {
+      "id": "E1_sampler",
+      "path": "query_minco/experiments/b2c1/sampler_exec.py",
+      "symbol": "TrajectorySampler",
+      "line": 25,
+      "end_line": 58,
+      "sha256": "2c12e94844a86b73568e9098643cb7b051201c8fa610b2e5faa5a8763e9420af",
+      "role": "execution_revision",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/recovery_v1/SOURCE_HASHES.json",
+          "phase": "authoritative",
+          "expected_sha256": "2c12e94844a86b73568e9098643cb7b051201c8fa610b2e5faa5a8763e9420af",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "2c12e94844a86b73568e9098643cb7b051201c8fa610b2e5faa5a8763e9420af",
+          "current_matches": true
+        }
+      ]
+    },
+    "E1_prefix": {
+      "id": "E1_prefix",
+      "path": "query_minco/experiments/b2c1/cumulative_time.py",
+      "symbol": "cumulative_three",
+      "line": 3,
+      "end_line": 10,
+      "sha256": "7955d434b24e2952175e67fc1ef73aa7f2c5a739f0a96f8c1a7d04cb2c3cbf43",
+      "role": "execution_revision",
+      "usage": [
+        "training",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/recovery_v1/SOURCE_HASHES.json",
+          "phase": "authoritative",
+          "expected_sha256": "7955d434b24e2952175e67fc1ef73aa7f2c5a739f0a96f8c1a7d04cb2c3cbf43",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "7955d434b24e2952175e67fc1ef73aa7f2c5a739f0a96f8c1a7d04cb2c3cbf43",
+          "current_matches": true
+        }
+      ]
+    },
+    "E1_teacher_sampling": {
+      "id": "E1_teacher_sampling",
+      "path": "query_minco/experiments/b2c1/teacher_exec.py",
+      "symbol": "teacher_evaluate",
+      "line": 5,
+      "end_line": 11,
+      "sha256": "95d44cf6a485c08a7fd0c99d7dc05daa548b8551e6fd307cc06dc8235aacf3f3",
+      "role": "execution_revision",
+      "usage": [
+        "training_loss"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/recovery_v1/SOURCE_HASHES.json",
+          "phase": "authoritative",
+          "expected_sha256": "95d44cf6a485c08a7fd0c99d7dc05daa548b8551e6fd307cc06dc8235aacf3f3",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "95d44cf6a485c08a7fd0c99d7dc05daa548b8551e6fd307cc06dc8235aacf3f3",
+          "current_matches": true
+        }
+      ]
+    },
+    "hungarian": {
+      "id": "hungarian",
+      "path": "query_minco/p2c2a/objective.py",
+      "symbol": "match",
+      "line": 24,
+      "end_line": 38,
+      "sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+      "role": "matching",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        }
+      ]
+    },
+    "objective": {
+      "id": "objective",
+      "path": "query_minco/p2c2a/objective.py",
+      "symbol": "forward",
+      "line": 40,
+      "end_line": 53,
+      "sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+      "role": "loss",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        }
+      ]
+    },
+    "extended_cost": {
+      "id": "extended_cost",
+      "path": "query_minco/p2c2a/objective.py",
+      "symbol": "cost_matrix",
+      "line": 9,
+      "end_line": 22,
+      "sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+      "role": "loss",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "976f40167e324a844a23b4b22460a11b287797da773cf90a8494dbea657c2e18",
+          "current_matches": true
+        }
+      ]
+    },
+    "base_cost": {
+      "id": "base_cost",
+      "path": "query_minco/p2b/imitation.py",
+      "symbol": "sample_cost_matrix",
+      "line": 39,
+      "end_line": 63,
+      "sha256": "8bb3235a70cbd75134f34eb30cdad5cb86d292b4b3ff917a0746c3512540730e",
+      "role": "loss",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "8bb3235a70cbd75134f34eb30cdad5cb86d292b4b3ff917a0746c3512540730e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "8bb3235a70cbd75134f34eb30cdad5cb86d292b4b3ff917a0746c3512540730e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "8bb3235a70cbd75134f34eb30cdad5cb86d292b4b3ff917a0746c3512540730e",
+          "current_matches": true
+        }
+      ]
+    },
+    "loader": {
+      "id": "loader",
+      "path": "query_minco/p2c2c1b2c0_preflight/data.py",
+      "symbol": "load_samples",
+      "line": 4,
+      "end_line": 16,
+      "sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+      "role": "data",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/PROTOCOL_SEAL.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        }
+      ]
+    },
+    "teacher_C1A": {
+      "id": "teacher_C1A",
+      "path": "query_minco/p2c2c1a/teachers.py",
+      "symbol": "generate_scene",
+      "line": 135,
+      "end_line": 147,
+      "sha256": "9bbf2007e8187de70919e7e41c2e1a02474474de8e595fb43b5969f930ad35ed",
+      "role": "historical_teacher_generation",
+      "usage": [
+        "cached_replay_ancestry"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "9bbf2007e8187de70919e7e41c2e1a02474474de8e595fb43b5969f930ad35ed",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1a_teacher_v1/MAIN_GENERATION_SOURCE_FREEZE.json",
+          "phase": "generation-time; wrapper files may later have frozen close revisions",
+          "expected_sha256": "9bbf2007e8187de70919e7e41c2e1a02474474de8e595fb43b5969f930ad35ed",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "9bbf2007e8187de70919e7e41c2e1a02474474de8e595fb43b5969f930ad35ed",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "9bbf2007e8187de70919e7e41c2e1a02474474de8e595fb43b5969f930ad35ed",
+          "current_matches": true
+        }
+      ]
+    },
+    "teacher_R2": {
+      "id": "teacher_R2",
+      "path": "query_minco/p2c2c1b2br2_numeric/teachers.py",
+      "symbol": "search",
+      "line": 10,
+      "end_line": 53,
+      "sha256": "0ce5d1d66c116c458339ccb8dc742d83350917c180636696ffc0410c4a7c2860",
+      "role": "historical_teacher_generation",
+      "usage": [
+        "cached_supplement_ancestry"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "0ce5d1d66c116c458339ccb8dc742d83350917c180636696ffc0410c4a7c2860",
+          "current_matches": true
+        }
+      ]
+    },
+    "teacher_generation_wrapper_current_closed": {
+      "id": "teacher_generation_wrapper_current_closed",
+      "path": "query_minco/p2c2c1b2c0_preflight/generate.py",
+      "symbol": "main",
+      "line": 12,
+      "end_line": 67,
+      "sha256": "85aad32a2d5bb349a1e355b97c321c3446d97d552163aad5a8c18bf07b5e664e",
+      "role": "historical_teacher_generation",
+      "usage": [
+        "historical_generation"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "85aad32a2d5bb349a1e355b97c321c3446d97d552163aad5a8c18bf07b5e664e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/PROTOCOL_SEAL.json",
+          "phase": "authoritative",
+          "expected_sha256": "85aad32a2d5bb349a1e355b97c321c3446d97d552163aad5a8c18bf07b5e664e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/GENERATION_EXECUTION_SEAL.json",
+          "phase": "generation-time; wrapper files may later have frozen close revisions",
+          "expected_sha256": "85aad32a2d5bb349a1e355b97c321c3446d97d552163aad5a8c18bf07b5e664e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "85aad32a2d5bb349a1e355b97c321c3446d97d552163aad5a8c18bf07b5e664e",
+          "current_matches": true
+        }
+      ]
+    },
+    "train_worker": {
+      "id": "train_worker",
+      "path": "query_minco/experiments/b2c1/manual_v3/train.py",
+      "symbol": "main",
+      "line": 13,
+      "end_line": 60,
+      "sha256": "ac664e51b2199f65e98f76dcbbf09798a69dfce1d01a1d7c408be55f5a642d49",
+      "role": "experiment_execution_wrapper",
+      "usage": [
+        "historical_training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/SOURCE_FREEZE_V3.json",
+          "phase": "authoritative",
+          "expected_sha256": "ac664e51b2199f65e98f76dcbbf09798a69dfce1d01a1d7c408be55f5a642d49",
+          "current_matches": true
+        }
+      ]
+    },
+    "train_update": {
+      "id": "train_update",
+      "path": "query_minco/experiments/b2c1/manual_v3/engine.py",
+      "symbol": "update",
+      "line": 7,
+      "end_line": 55,
+      "sha256": "c804bad9f961d5af32794299c4be84367aa03be8e8b89b334d897cba9e42d402",
+      "role": "experiment_execution_wrapper",
+      "usage": [
+        "historical_training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/SOURCE_FREEZE_V3.json",
+          "phase": "authoritative",
+          "expected_sha256": "c804bad9f961d5af32794299c4be84367aa03be8e8b89b334d897cba9e42d402",
+          "current_matches": true
+        }
+      ]
+    },
+    "runtime_adapter": {
+      "id": "runtime_adapter",
+      "path": "query_minco/experiments/closed_loop_v1/runtime_adapter.py",
+      "symbol": "RuntimeAdapter",
+      "line": 13,
+      "end_line": 47,
+      "sha256": "4771dedabd5659853438fc37dd1dd32ec1a8a644009cfc4ddac21b2013146f12",
+      "role": "inference_adapter",
+      "usage": [
+        "historical_policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "4771dedabd5659853438fc37dd1dd32ec1a8a644009cfc4ddac21b2013146f12",
+          "current_matches": true
+        }
+      ]
+    },
+    "diagnostic_selector": {
+      "id": "diagnostic_selector",
+      "path": "query_minco/experiments/closed_loop_ideal_plant_v4/diagnostic_selector.py",
+      "symbol": "select",
+      "line": 55,
+      "end_line": 71,
+      "sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+      "role": "diagnostic_strategy",
+      "usage": [
+        "historical_policy_only_not_deployment"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/SOURCE_FREEZE.json",
+          "phase": "authoritative",
+          "expected_sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+          "current_matches": true
+        }
+      ]
+    },
+    "non_geometry": {
+      "id": "non_geometry",
+      "path": "query_minco/experiments/closed_loop_ideal_plant_v4/diagnostic_selector.py",
+      "symbol": "non_geometry",
+      "line": 10,
+      "end_line": 41,
+      "sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+      "role": "contract",
+      "usage": [
+        "historical_policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/SOURCE_FREEZE.json",
+          "phase": "authoritative",
+          "expected_sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+          "current_matches": true
+        }
+      ]
+    },
+    "goal_contract": {
+      "id": "goal_contract",
+      "path": "query_minco/p2c2c1a/contract.py",
+      "symbol": "task_metrics",
+      "line": 4,
+      "end_line": 17,
+      "sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+      "role": "contract",
+      "usage": [
+        "teacher_acceptance",
+        "formal_eval",
+        "policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1a_teacher_v1/MAIN_GENERATION_SOURCE_FREEZE.json",
+          "phase": "generation-time; wrapper files may later have frozen close revisions",
+          "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+          "current_matches": true
+        }
+      ]
+    },
+    "physical_validator": {
+      "id": "physical_validator",
+      "path": "query_minco/p2c0/validation.py",
+      "symbol": "validate_teacher",
+      "line": 93,
+      "end_line": 136,
+      "sha256": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+      "role": "contract",
+      "usage": [
+        "teacher_acceptance",
+        "formal_eval",
+        "offline_diagnostic"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+          "phase": "authoritative",
+          "expected_sha256": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+          "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+          "expected_sha256": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+          "current_matches": true
+        }
+      ]
+    },
+    "frame_input": {
+      "id": "frame_input",
+      "path": "query_minco/experiments/closed_loop_v1/interfaces.py",
+      "symbol": "make_state",
+      "line": 25,
+      "end_line": 30,
+      "sha256": "71158e55f306d0e7f58163c9a42b788f84b386b8cdbb5ec7a9eb6dd0cd0c5350",
+      "role": "coordinate_contract",
+      "usage": [
+        "historical_policy"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "71158e55f306d0e7f58163c9a42b788f84b386b8cdbb5ec7a9eb6dd0cd0c5350",
+          "current_matches": true
+        }
+      ]
+    },
+    "safety_guard": {
+      "id": "safety_guard",
+      "path": "query_minco/experiments/closed_loop_v1/interfaces.py",
+      "symbol": "refuse_uncertified",
+      "line": 71,
+      "end_line": 81,
+      "sha256": "71158e55f306d0e7f58163c9a42b788f84b386b8cdbb5ec7a9eb6dd0cd0c5350",
+      "role": "safety_guard",
+      "usage": [
+        "deployment_refusal"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "71158e55f306d0e7f58163c9a42b788f84b386b8cdbb5ec7a9eb6dd0cd0c5350",
+          "current_matches": true
+        }
+      ]
+    },
+    "ideal_plant": {
+      "id": "ideal_plant",
+      "path": "query_minco/experiments/closed_loop_ideal_plant_v4/plant.py",
+      "symbol": "IdealPlant",
+      "line": 8,
+      "end_line": 35,
+      "sha256": "c81bb07c69fa65d11300b06528a3edbc24fbca4e41c966fa02c3e9bd4bd6e26e",
+      "role": "diagnostic_plant",
+      "usage": [
+        "historical_episode"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/SOURCE_FREEZE.json",
+          "phase": "authoritative",
+          "expected_sha256": "c81bb07c69fa65d11300b06528a3edbc24fbca4e41c966fa02c3e9bd4bd6e26e",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "c81bb07c69fa65d11300b06528a3edbc24fbca4e41c966fa02c3e9bd4bd6e26e",
+          "current_matches": true
+        }
+      ]
+    }
+  },
+  "required_component_ids": [
+    "E1_postprocessor",
+    "E1_prefix",
+    "E1_sampler",
+    "E1_scope",
+    "E1_teacher_sampling",
+    "base_cost",
+    "depth_encoder",
+    "diagnostic_selector",
+    "extended_cost",
+    "frame_input",
+    "goal_contract",
+    "head",
+    "hungarian",
+    "ideal_plant",
+    "loader",
+    "minco_adapter",
+    "minco_solver",
+    "network",
+    "non_geometry",
+    "objective",
+    "physical_decoder",
+    "physical_validator",
+    "query_decoder",
+    "runtime_adapter",
+    "safety_guard",
+    "state_encoder",
+    "teacher_C1A",
+    "teacher_R2",
+    "teacher_generation_wrapper_current_closed",
+    "train_update",
+    "train_worker"
+  ],
+  "network_config": {
+    "depth_channels": 2,
+    "depth_height": 128,
+    "depth_width": 160,
+    "state_dim": 12,
+    "embed_dim": 128,
+    "num_queries": 6,
+    "decoder_layers": 2,
+    "attention_heads": 4,
+    "ffn_dim": 256,
+    "output_dim": 21,
+    "dropout": 0.0
+  },
+  "parameter_config": {
+    "position_min_m": [
+      0.0,
+      -4.0,
+      -2.0
+    ],
+    "position_max_m": [
+      10.0,
+      4.0,
+      2.0
+    ],
+    "terminal_velocity_axis_max_mps": [
+      6.0,
+      4.0,
+      3.0
+    ],
+    "terminal_acceleration_axis_max_mps2": [
+      6.0,
+      6.0,
+      4.0
+    ],
+    "min_total_time_s": 0.8,
+    "max_total_time_s": 2.2,
+    "min_segment_time_s": 0.12
+  },
+  "raw_21d": [
+    {
+      "index": 0,
+      "meaning": "inner_p1_B0_x",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 1,
+      "meaning": "inner_p1_B0_y",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 2,
+      "meaning": "inner_p1_B0_z",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 3,
+      "meaning": "inner_p2_B0_x",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 4,
+      "meaning": "inner_p2_B0_y",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 5,
+      "meaning": "inner_p2_B0_z",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 6,
+      "meaning": "terminal_p_B0_x",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 7,
+      "meaning": "terminal_p_B0_y",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 8,
+      "meaning": "terminal_p_B0_z",
+      "transform": "tanh to absolute B0 position bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 9,
+      "meaning": "terminal_v_x",
+      "transform": "tanh times per-axis velocity bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 10,
+      "meaning": "terminal_v_y",
+      "transform": "tanh times per-axis velocity bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 11,
+      "meaning": "terminal_v_z",
+      "transform": "tanh times per-axis velocity bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 12,
+      "meaning": "terminal_a_x",
+      "transform": "tanh times per-axis acceleration bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 13,
+      "meaning": "terminal_a_y",
+      "transform": "tanh times per-axis acceleration bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 14,
+      "meaning": "terminal_a_z",
+      "transform": "tanh times per-axis acceleration bounds",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 15,
+      "meaning": "total_duration_logit",
+      "transform": "0.8+1.4*sigmoid",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 16,
+      "meaning": "segment_0_allocation_logit",
+      "transform": "0.12+(T-0.36)*softmax",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 17,
+      "meaning": "segment_1_allocation_logit",
+      "transform": "0.12+(T-0.36)*softmax",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 18,
+      "meaning": "segment_2_allocation_logit",
+      "transform": "0.12+(T-0.36)*softmax",
+      "constructs_trajectory": true,
+      "supervised": true
+    },
+    {
+      "index": 19,
+      "meaning": "unsupervised_score",
+      "transform": "identity, NOT usable for ranking",
+      "constructs_trajectory": false,
+      "supervised": false
+    },
+    {
+      "index": 20,
+      "meaning": "unsupervised_feasibility_logit",
+      "transform": "identity, NOT calibrated or usable as probability",
+      "constructs_trajectory": false,
+      "supervised": false
+    }
+  ],
+  "minco": {
+    "solver": "YOPO/minco/minco.py::MincoS3NU",
+    "adapter": "query_minco/trajectory/minco_adapter.py::MincoAdapter",
+    "pieces": 3,
+    "polynomial_degree": 5,
+    "precision": "FP32",
+    "matrix_size": [
+      18,
+      18
+    ],
+    "production_linear_solver": "torch.linalg.inv + bmm",
+    "coefficient_shape": [
+      "B",
+      6,
+      3,
+      3,
+      6
+    ],
+    "head": "p=0, v=state[0:3], a=state[3:6]",
+    "tail": "raw decoded p/v/a",
+    "inner_points": 2
+  },
+  "E1": {
+    "id": "E1_three_segment_prefix_v1",
+    "cumulative": "[d0,d0+d1,d0+d1+d2]",
+    "training_scope": [
+      [
+        "query_minco.p2c2a.objective",
+        "TrajectoryPostprocessor",
+        "execution_revision.TrajectoryPostprocessor"
+      ],
+      [
+        "query_minco.p2c2a.objective",
+        "TrajectorySampler",
+        "sampler_exec.TrajectorySampler"
+      ],
+      [
+        "query_minco.p2c2a.objective",
+        "teacher_evaluate",
+        "teacher_exec.teacher_evaluate"
+      ],
+      [
+        "query_minco.p2b.imitation",
+        "TrajectorySampler",
+        "sampler_exec.TrajectorySampler"
+      ],
+      [
+        "query_minco.p2b.imitation",
+        "teacher_evaluate",
+        "teacher_exec.teacher_evaluate"
+      ]
+    ],
+    "restores_original_bindings_in_finally": true,
+    "inference": "historical RuntimeAdapter explicitly constructs E1 TrajectoryPostprocessor",
+    "dependency_injection_replacement_applied": false,
+    "mainline_explicit_binding": true,
+    "historical_fields_note": "training_scope and dependency_injection_replacement_applied describe the frozen historical implementation; new package uses explicit E1, without mutating those modules"
+  },
+  "hungarian": {
+    "id": "p2c2a_B_set_v1",
+    "cost_shape": [
+      6,
+      "M"
+    ],
+    "solver": "scipy.optimize.linear_sum_assignment",
+    "discrete_assignment_detached": true,
+    "selected_original_cost_keeps_grad": true,
+    "M_range": [
+      1,
+      6
+    ],
+    "actual_training_M": [
+      1,
+      4
+    ],
+    "unmatched": "zero direct raw-output loss gradient; shared attention/features may still receive indirect gradients"
+  },
+  "loss": {
+    "id": "B_set_six_term_imitation_v1",
+    "terms": [
+      {
+        "id": "trajectory_position_mse",
+        "weight": 1.0,
+        "reduction": "mean S=32 and xyz",
+        "source": "query_minco/p2b/imitation.py:39"
+      },
+      {
+        "id": "trajectory_velocity_mse",
+        "weight": 0.1,
+        "reduction": "mean S=32 and xyz",
+        "source": "query_minco/p2b/imitation.py:39"
+      },
+      {
+        "id": "terminal_position_mse",
+        "weight": 0.5,
+        "reduction": "mean xyz",
+        "source": "query_minco/p2b/imitation.py:39"
+      },
+      {
+        "id": "total_duration_squared_error",
+        "weight": 0.2,
+        "reduction": "scalar",
+        "source": "query_minco/p2b/imitation.py:39"
+      },
+      {
+        "id": "terminal_velocity_mse",
+        "weight": 0.1,
+        "reduction": "mean xyz",
+        "source": "query_minco/p2c2a/objective.py:9"
+      },
+      {
+        "id": "terminal_acceleration_mse",
+        "weight": 0.01,
+        "reduction": "mean xyz",
+        "source": "query_minco/p2c2a/objective.py:9"
+      }
+    ],
+    "trajectory_alignment": "same physical time min(Tq,Tm)*linspace(0,1,32)",
+    "reduction": "mean matched teacher costs per task, then batch mean",
+    "weights_source": "literal constants in imitation.py and objective.py, not only config dictionary",
+    "no_physics_diversity_or_selector_loss": true
+  },
+  "teacher_lineage": {
+    "generation": {
+      "replay": "C1A multimode seeds and Adam trajectory optimization; original FP32 canonical acceptance",
+      "supplement": "R2 seed checks + FP64 reference/L-BFGS-B fallback, original FP32 canonical acceptance"
+    },
+    "loader": {
+      "id": "loader",
+      "path": "query_minco/p2c2c1b2c0_preflight/data.py",
+      "symbol": "load_samples",
+      "line": 4,
+      "end_line": 16,
+      "sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+      "role": "data",
+      "usage": [
+        "training"
+      ],
+      "historical_bindings": [
+        {
+          "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/PROTOCOL_SEAL.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        },
+        {
+          "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+          "phase": "authoritative",
+          "expected_sha256": "1bd07a001f8094ecfbcc8986687125038cbd73f47e7fe40653569333e88bca27",
+          "current_matches": true
+        }
+      ]
+    },
+    "mode": "offline sealed cache only, no generation during training",
+    "actual_teachers_per_task": [
+      1,
+      4
+    ],
+    "train_orth_tasks": 192,
+    "replay_tasks": 192,
+    "teacher_count_each": 336,
+    "cache_bindings": "DATA_BINDINGS.json",
+    "known_original_generation_wrapper_gap": true
+  },
+  "checkpoint": {
+    "path": "query_minco/outputs/b2c1/train_v3/A42_C1_orthogonal/checkpoint_step2880.pt",
+    "sha256": "2352de6dd1e4a839b78ec12c115b5319b34da3c61cada105dbdeb24a4faec6d1",
+    "size": 5800828,
+    "stage": "B2-C1 A42 C1_orthogonal",
+    "stage_updates": 2880,
+    "path_semantics": "historical provenance only; explicit caller path required; never resolve latest"
+  },
+  "initialization_lineage": [
+    {
+      "path": "query_minco/outputs/p2c2a_set_v1/seed42_B_set/checkpoint_overfit.pt",
+      "sha256": "375424b2839932d31ecf384d8946c1ade3c89693b4496ae3fb3ffcf56aff13b2",
+      "size": 5800764,
+      "stage": "P2C2A B_set overfit",
+      "stage_updates": 600
+    },
+    {
+      "path": "query_minco/outputs/p2c2b1_mixed_v1/seed42_B_set/checkpoint_step0650.pt",
+      "sha256": "55cb82a985e595686bcae302e701c66d6e7321cdeb329c826e82954b81a9d830",
+      "size": 5800956,
+      "stage": "P2C2B1 mixed B_set",
+      "stage_updates": 650
+    },
+    {
+      "path": "query_minco/outputs/p2c2c1b1_train_v1/runs/A42/checkpoint_step5760.pt",
+      "sha256": "6987a9de04088b652890eb65c21f6e5e5940097193f9a01cac0ea5454a6c22cc",
+      "size": 5810748,
+      "stage": "B1 A42 A_history",
+      "stage_updates": 5760
+    },
+    {
+      "path": "query_minco/b2c1_controlled_20261021_v1/initialization/A42_state_dict.pt",
+      "sha256": "e02d59869b1b9cebe34f4aa4be67e86385521b0ee0827582fc14a91ae16f35a2",
+      "size": 1949790,
+      "stage": "weights-only transport",
+      "stage_updates": 0
+    },
+    {
+      "path": "query_minco/outputs/b2c1/train_v3/A42_C1_orthogonal/checkpoint_step2880.pt",
+      "sha256": "2352de6dd1e4a839b78ec12c115b5319b34da3c61cada105dbdeb24a4faec6d1",
+      "size": 5800828,
+      "stage": "B2-C1 A42 C1_orthogonal",
+      "stage_updates": 2880
+    }
+  ],
+  "score_feasibility": {
+    "raw_indices": [
+      19,
+      20
+    ],
+    "final_head_rows_and_bias_unchanged": true,
+    "score_values_may_change_via_shared_features": true,
+    "online_score_usable": false,
+    "feasibility_probability_usable": false
+  },
+  "contract_variants": {
+    "schema_version": 1,
+    "frame": "local B0 FLU; x forward y left z up; distances m and physical seconds",
+    "state_order": [
+      "velocity_B0_xyz",
+      "kinematic_acceleration_B0_xyz",
+      "goal_B0_xyz",
+      "unit_gravity_B0_xyz"
+    ],
+    "depth": {
+      "shape": [
+        2,
+        128,
+        160
+      ],
+      "channels": [
+        "optical_Z/20",
+        "valid_mask"
+      ],
+      "K": [
+        [
+          100.0,
+          0.0,
+          79.5
+        ],
+        [
+          0.0,
+          100.0,
+          63.5
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "optical_coordinates": "[-y_B0,-z_B0,x_B0]",
+      "valid_Z_m": [
+        0.04,
+        20
+      ]
+    },
+    "parameter_decoder": {
+      "id": "absolute_B0_three_piece_v1",
+      "configuration": {
+        "position_min_m": [
+          0.0,
+          -4.0,
+          -2.0
+        ],
+        "position_max_m": [
+          10.0,
+          4.0,
+          2.0
+        ],
+        "terminal_velocity_axis_max_mps": [
+          6.0,
+          4.0,
+          3.0
+        ],
+        "terminal_acceleration_axis_max_mps2": [
+          6.0,
+          6.0,
+          4.0
+        ],
+        "min_total_time_s": 0.8,
+        "max_total_time_s": 2.2,
+        "min_segment_time_s": 0.12
+      },
+      "note": "decoder workspace/per-axis caps are not physical flight-domain/norm guarantees"
+    },
+    "common_limits": {
+      "speed_mps": 3.0,
+      "acceleration_mps2": 8.0,
+      "jerk_mps3": 100.0,
+      "body_radius_m": 0.12,
+      "required_surface_margin_m": 0.03,
+      "total_duration_s": [
+        0.8,
+        2.2
+      ],
+      "minimum_segment_s": 0.12,
+      "boundary_atol_pva": [
+        0.0002,
+        0.002,
+        0.01
+      ],
+      "continuity_atol_orders_0_to_4": [
+        0.0002,
+        0.002,
+        0.01,
+        0.1,
+        1.0
+      ],
+      "max_certificate_depth": 18
+    },
+    "goal": {
+      "id": "C1A_near_arrival_far_progress_v1",
+      "near": {
+        "distance_lte_m": 3.4,
+        "endpoint_error_lte_m": 0.15,
+        "terminal_speed_lte_mps": 0.25
+      },
+      "far": {
+        "distance_gt_m": 3.4,
+        "min_distance_reduction_m": 1.0,
+        "min_projected_progress_m": 1.0,
+        "min_direction_cosine": 0.5,
+        "max_terminal_ray_offset_m": 0.8
+      },
+      "function": {
+        "id": "goal_contract",
+        "path": "query_minco/p2c2c1a/contract.py",
+        "symbol": "task_metrics",
+        "line": 4,
+        "end_line": 17,
+        "sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+        "role": "contract",
+        "usage": [
+          "teacher_acceptance",
+          "formal_eval",
+          "policy"
+        ],
+        "historical_bindings": [
+          {
+            "original_seal": "query_minco/outputs/b2c1/train_v3/_preparation/preflight_v3/IMMUTABLE_TRAINING_INPUTS.json",
+            "phase": "authoritative",
+            "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+            "current_matches": true
+          },
+          {
+            "original_seal": "query_minco/outputs/p2c2c1b1_preflight_v1/B1_TRAINING_PREREGISTRATION.json",
+            "phase": "authoritative",
+            "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+            "current_matches": true
+          },
+          {
+            "original_seal": "query_minco/outputs/p2c2c1a_teacher_v1/MAIN_GENERATION_SOURCE_FREEZE.json",
+            "phase": "generation-time; wrapper files may later have frozen close revisions",
+            "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+            "current_matches": true
+          },
+          {
+            "original_seal": "query_minco/outputs/p2c2c1b2c0_preflight_v1/runtime_generate.json",
+            "phase": "actual generation module hashes; compare phase-specific wrappers separately",
+            "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+            "current_matches": true
+          },
+          {
+            "original_seal": "query_minco/outputs/closed_loop_ideal_plant_v4/_preparation/INPUT_BINDINGS.json",
+            "phase": "authoritative",
+            "expected_sha256": "72b8a8d602722e6dfd72fb12c8593f2c9bf6b211d95d596ffe9d6b2b13fc6c3b",
+            "current_matches": true
+          }
+        ]
+      },
+      "far_does_not_require_full_goal_arrival": true
+    },
+    "flight_domains": [
+      {
+        "id": "training_eval_scene_domain_3d_v1",
+        "source": "scene.flight_center_domain_m",
+        "bounds_expression": [
+          [
+            0,
+            "-wall+0.15",
+            -1.2
+          ],
+          [
+            "back-0.15",
+            "wall-0.15",
+            1.2
+          ]
+        ],
+        "frame": "fixed local B0 FLU",
+        "applicable": "C1A/B2-C0 generated tasks; per-task scene authoritative; not world-global flight limits",
+        "sources": [
+          {
+            "path": "query_minco/p2c2c1a/geometry.py",
+            "sha256": "1f39ce8a03b1b132263ea0e461bb1fb7314ecefb60c22ff02abc101e85327f07",
+            "size": 2888
+          },
+          {
+            "path": "query_minco/p2c2c1b2c0_preflight/geometry.py",
+            "sha256": "bcc8842a2f94ed03a9a97ed40ac5ff9cfc4ca4412ebae4a5f372bf74b1701f4e",
+            "size": 1818
+          }
+        ]
+      },
+      {
+        "id": "v4_diagnostic_p2c0_fixed_domain_v1",
+        "source": "p2c0.CONFIG.flight_center_domain_m",
+        "bounds": [
+          [
+            0.0,
+            -1.65,
+            -0.45
+          ],
+          [
+            10.0,
+            1.65,
+            0.45
+          ]
+        ],
+        "frame": "current-cycle local B0 FLU",
+        "applicable": "v4 non_geometry diagnostic selection, not a trained constraint or deployment safety proof",
+        "sources": [
+          {
+            "path": "query_minco/p2c0/config.py",
+            "sha256": "c26223d9216be5de20670dad7886a151dfe4cfafe8d32a86194d006213882730",
+            "size": 1353
+          },
+          {
+            "path": "query_minco/experiments/closed_loop_ideal_plant_v4/diagnostic_selector.py",
+            "sha256": "87890b342db42e586a9e56ea5b64fc017ae4541c5edc3bb36955abd6ca003a2b",
+            "size": 4909
+          }
+        ]
+      }
+    ],
+    "domains_unified": false,
+    "UNKNOWN_policy": "v4 diagnostic eligibility may allow UNKNOWN; never safety certified; original Guard unchanged"
+  },
+  "historical_training_recipe": "TRAINING_RECIPE.json",
+  "historical_dependency_graphs": "DEPENDENCY_GRAPHS.json",
+  "source_manifest": "SOURCE_MANIFEST.json",
+  "source_scope": "verify all 1030 inventoried source files; graph/role fields distinguish execution from history",
+  "unresolved_gaps": [
+    "B2-C0 generation common.py and launch.py old full text missing; SHA recorded, not reconstructed",
+    "full from-random ancestry and cross-environment numerical reproduction UNVERIFIED"
+  ],
+  "deployment_safety": "NOT_CERTIFIED; raw19/20 unusable; UNKNOWN diagnostic candidate not certified",
+  "historical_registration_scope": "post-audit identity of unchanged historical A42 C1 step2880; description only",
+  "registration_scope": "new mainline, identical method identity pending numeric validation",
+  "portable_source_sha256": {
+    "query_minco/__init__.py": "77f0640b46e5a48718d2a8c0999f492a90b5b70dcb803b56699b5cee9c4aedb1",
+    "query_minco/_vendor/__init__.py": "1e18cf8d72da7df2db2a7a6c6498d3e06071614fe310a0443ab00bc94878a030",
+    "query_minco/_vendor/minco/LICENSE": "190628e01bd182aa8fc644706d6ff81824438cb6f35b788788d7403ce1aabadd",
+    "query_minco/_vendor/minco/__init__.py": "30711fbde5aac36ed01d79937417945be8f8f76a16d6da812d54035044a55cb2",
+    "query_minco/_vendor/minco/minco.py": "2e5edda74831024e01f6bcdca58843079f6476061d5e16f638ab68fa9819356c",
+    "query_minco/_vendor/minco/trajectory.py": "f0edab69b43c3408412b0efd5cf97996ef4894724595360bb324d70493055df2",
+    "query_minco/evaluation/__init__.py": "354c72951bdaced2131affc12f748fbe3c1105ca128e282450ca0a0fad57dda1",
+    "query_minco/evaluation/config.py": "c26223d9216be5de20670dad7886a151dfe4cfafe8d32a86194d006213882730",
+    "query_minco/evaluation/geometry.py": "5a45f775387ee296ad65330e143a17759cd5e07caadc2e0f527fb8b452d82c79",
+    "query_minco/evaluation/goal.py": "03f1a42f325ec78ab83025e780e4c3f7442b8219de54e57e0a783fb441b466c3",
+    "query_minco/evaluation/goal_config.py": "f44ce5ded6dbb496119905bbf4f068efd5f44243fb115cf0e03805521e6d194f",
+    "query_minco/evaluation/signed_geometry.py": "01356d996b20c2d3ca20275c4031600be5831f0f82b88f585f4c6c9d91bc0c21",
+    "query_minco/evaluation/validation.py": "3cf7aeea4d8bf581fe9947a01ddb8fe9bf5c805a4f308312522ceb225bd71703",
+    "query_minco/inference/__init__.py": "920d838c2315e6e9e6c636c7134268c54e837fa0355d0ea2920e73c6fa5f1f80",
+    "query_minco/inference/identity.py": "83511bbc68ba7bfbf0c2e0209637c02e983ba71fb90b2ec6ae472bf4cb5739cc",
+    "query_minco/inference/planner_adapter.py": "9e19842d020746cf9edc1a042dab1fc28549ae33ba364f2071bcad25ee139353",
+    "query_minco/models/__init__.py": "1b4f1ab845616b6ea64159c42ff76a26fa04877d01940600ede245e73c765468",
+    "query_minco/models/_validation.py": "706831a4490c390ddf17c4a3fd57059fb8643f49ad5dc59a344a6336d2933b7e",
+    "query_minco/models/config.py": "2c0b2e1a86443cdbc906fba04876e65b2fd008752897d47688cc70e14369e994",
+    "query_minco/models/depth_encoder.py": "8b8bf809027638d1b13c6922848cbad6a934bc652aa9efe070c167b7a015eca8",
+    "query_minco/models/planner.py": "5d44e12636c7941a43be43cb8dc0d4580dc1c0c27bdded9fd429aa29b8f5b1c4",
+    "query_minco/models/query_decoder.py": "6da1ea9b636dac618f79e76b37fc0e4a6f9816dfaef8d778f32a70572fcf2bfc",
+    "query_minco/models/state_encoder.py": "f2ceb22774e96b51537f8a4c5fd18dbccb3a8533c7a22418d779f8a7ea068e1a",
+    "query_minco/models/trajectory_head.py": "a319a0b64ebc2f226de0b48e39dbb54c99bf9996ea5c7bb6e5a83b279b292499",
+    "query_minco/training/__init__.py": "d75c23ff9a944ab588e77b2ca283e2419f5afa2bb2fe8fb095faa40477b3717f",
+    "query_minco/training/datasets/__init__.py": "e455a3dd988cf6dfba2100032707ab3fb1bc6760fccde409296ff31b3f2d8bca",
+    "query_minco/training/datasets/cache.py": "3c19c367174d27f48bd0363d8420d95dfd3ea5b3a6151110b61e97a9ba267f86",
+    "query_minco/training/datasets/inputs.py": "437fe7b94080ca8121fd864883c6c327506da655fa7d2376075629fb7a8ec42d",
+    "query_minco/training/losses/__init__.py": "8ac64ca7094829e751e980415bff96e1255e42b4cad570400fa669fc4d7494a1",
+    "query_minco/training/losses/base_imitation.py": "45e100aaf7eb6047d09671f2ba132d21cdc09a83a9a6caef34ee0859ed92c91b",
+    "query_minco/training/losses/imitation.py": "be8d0c150fc864fb9883a7fd78793e4cb222c5673209a58c21226f9fd1ca57a7",
+    "query_minco/training/matching/__init__.py": "9030d57f1eb30b867d44c598bfc7edb4ad8aa3239fd4ce981d7e4d2bb0570dae",
+    "query_minco/training/matching/hungarian.py": "83a6b761e7fb655e441c9617ea14601251aaada3d63a883c6475499c8bde5ad2",
+    "query_minco/training/objective.py": "4943d27e632275301ea38443d8ce9c81e659380e9cd3ac21ba18edd67f412fc5",
+    "query_minco/training/recipe.py": "9061ecb09941dcdf152cab40740472a52ab3937de4fe8f261a5836fe5fe0f2a0",
+    "query_minco/training/teacher/__init__.py": "f7dfea803459946740e6d3b9ff078fdf1699468d62a1abdc382bd71b9a29db57",
+    "query_minco/training/teacher/c1a.py": "f84ca86cf5173e7efab14ed3c606a1c3e2528226dffe3c2de86152a46c192ac7",
+    "query_minco/training/teacher/config.py": "f44ce5ded6dbb496119905bbf4f068efd5f44243fb115cf0e03805521e6d194f",
+    "query_minco/training/teacher/r2.py": "0cbd991e78a376ddb6f7127aff9a434d4742ef5fb2903cd9b4347f516cd26f79",
+    "query_minco/training/teacher/reference64.py": "0b231218e386a4377d4ebbab237c633aefef4ad9d2455303ef421dfe53224650",
+    "query_minco/training/teacher/sampling.py": "a9a4f13511dda740778a2144bf2636aa00f9771e9fcb869fdb0a96194b77b7bc",
+    "query_minco/trajectory/__init__.py": "cda31b3003e5a03c9e09c1783d3fd97dadbd8d3e67c39e3aa9125fe5bf6f4de1",
+    "query_minco/trajectory/_validation.py": "ef0347b8d6da84b1d36ddee6e028f9f6009a6ebefb002d470e4be09105748870",
+    "query_minco/trajectory/cumulative_time.py": "7955d434b24e2952175e67fc1ef73aa7f2c5a739f0a96f8c1a7d04cb2c3cbf43",
+    "query_minco/trajectory/minco_adapter.py": "b557b8925febf765e2dc2c900a37408e84aafe60ffb1f0f93d19589f177bc8ea",
+    "query_minco/trajectory/parameter_decoder.py": "0b1100fe52b23a88925bc02e9e796f4cca77572ad662587926778d4cb6b5b66c",
+    "query_minco/trajectory/postprocessor.py": "2681bdd5cbee2f878415649084ac8dc7f1e09d657c35c607b5cc0818f508dc8c",
+    "query_minco/trajectory/postprocessor_legacy.py": "f43a3e4c3caff202134de7b8b6a6398df94ff11fcc618815a2c5dcd93336eea5",
+    "query_minco/trajectory/sampler.py": "22146ff1c19531802049930bc4106ef120c6ee0c962104accb8c6177e0bbc6f6",
+    "query_minco/trajectory/sampler_e1.py": "2c12e94844a86b73568e9098643cb7b051201c8fa610b2e5faa5a8763e9420af",
+    "query_minco/trajectory/types.py": "ef8d997a880bea0696ac921ae2d6af6b1533c7efbc43f4a2039f78edc1c47251"
+  },
+  "history_anchor": {
+    "r0_seal_sha256": "78ce1c167b9a6c8eede8bb91698531b0d0302473d34142d264a84b941585a244",
+    "r1_manifest_sha256": "21e88f8fbd1688090e2868e0d307495e88c8cd8f9db5971a87878aa18a1d886d",
+    "local_historical_git": "41149b8968a9ae87f65bd9fecb230a2dbbfed969"
+  },
+  "historical_permissions": {
+    "describe": true,
+    "training_spec": true,
+    "checkpoint_deserialization": false,
+    "model_forward": false,
+    "training": false,
+    "formal_evaluation": false,
+    "episode": false,
+    "ROS_Controller": false,
+    "GT_online_selection": false
+  },
+  "permissions": {
+    "describe": true,
+    "synthetic_cpu_inference": true,
+    "training": false,
+    "formal_evaluation": false,
+    "episode": false,
+    "ROS_Controller": false,
+    "GT_online_selection": false
+  },
+  "historical_numerical_equivalence": "NOT_EXECUTED_REQUIRES_SEPARATE_AUTHORIZATION",
+  "numerical_equivalence": {
+    "inference": "228 bitwise comparisons passed on synthetic CPU fixtures",
+    "training": "129 bitwise comparisons including M1/M4 gradients and canonical C1A fixture",
+    "limitations": [
+      "not full training replay",
+      "not complete R2 search",
+      "not cross-device equivalence"
+    ]
+  },
+  "resolved_components": {
+    "architecture": "query_minco.models.planner.QueryMincoPlanner",
+    "parameter_schema": "query_minco.trajectory.parameter_decoder.PhysicalParameterDecoder",
+    "minco": "query_minco._vendor.minco.minco.MincoS3NU",
+    "E1": "query_minco.trajectory.sampler_e1.TrajectorySampler",
+    "matcher": "query_minco.training.matching.hungarian.match",
+    "loss": "query_minco.training.losses.imitation.cost_matrix",
+    "objective": "query_minco.training.objective.forward",
+    "C1A_teacher": "query_minco.training.teacher.c1a.generate_scene",
+    "R2_teacher": "query_minco.training.teacher.r2.search",
+    "cache_reader": "query_minco.training.datasets.cache.load_samples",
+    "goal_contract": "query_minco.evaluation.goal.task_metrics",
+    "physics_contract": "query_minco.evaluation.validation.validate_teacher"
+  },
+  "component_ids": {
+    "architecture_id": "cnn_state_6q_128d_2layer_4head_v1",
+    "parameter_schema_id": "absolute_B0_21D_3piece_v1",
+    "minco_implementation_id": "YOPO_MincoS3NU_cb8d48a_FP32_inverse_bmm",
+    "E1_revision_id": "E1_three_segment_prefix_v1",
+    "matcher_id": "p2c2a_B_set_v1",
+    "loss_id": "B_set_six_term_imitation_v1",
+    "teacher_strategy_ids": [
+      "C1A_multistart_Adam_v1",
+      "R2_multistart_FP64_LBFGSB_v1"
+    ],
+    "goal_contract_id": "C1A_NearArrival_FarProgress_v1",
+    "physics_contract_ids": [
+      "P2C0_3_8_100_scene_domain_v1",
+      "v4_diagnostic_fixed_domain_v1"
+    ]
+  },
+  "dataset_manifest_bindings": {
+    "query_minco/outputs/method_provenance_r0_v1/DATA_BINDINGS.json": "15de3b6070091bf5e6370f0edb9185dabde92af88ce7492372d69aa68da33c54",
+    "query_minco/outputs/p2c2c1b2c0_preflight_v1/REPLAY_MANIFEST.json": "bb604a093addbdf7839a4ffb5436829bfb87c09e0a4ff28e0cf5c51bb3c344f1",
+    "query_minco/outputs/p2c2c1b2c0_preflight_v1/DATASET_MANIFEST.json": "49b27d12ca3f595eb6f0c4d4e48b7e457b27ca52d0c2189dbd52fdb75e6781ed"
+  },
+  "training_recipe": {
+    "schema_version": 1,
+    "method_id": "query_minco_b2c1_c1_e1_v1",
+    "mode": "DESCRIBE_ONLY_NO_TRAINER",
+    "historical_run": {
+      "path": "query_minco/outputs/b2c1/train_v3/A42_C1_orthogonal/RUN_CONFIG.json",
+      "sha256": "39e9c60c5bbfd0c452461b442465aa6f46985b7da23ff5ed1c348b37928c2704",
+      "size": 4897
+    },
+    "protocol": {
+      "stage": "P2C-2C1B2-C0 Preflight",
+      "training_authorized": false,
+      "training_executed": false,
+      "hypotheses": {
+        "H0": "Orthogonal supplement is no better than equal-budget original-distribution Replay on unseen Near goals",
+        "H1": "unchanged V1 + orthogonal supplement improves unseen Near goal generation"
+      },
+      "arms": [
+        "C0_replay",
+        "C1_orthogonal"
+      ],
+      "paired_initializations": [
+        "A42",
+        "A43",
+        "A44"
+      ],
+      "B42": "excluded; optional only with separate future authorization",
+      "initialization_registry_sha256": "964dfef0f0149f90a7fdc49b4887a08a714b5dce1fe046204f6e0a3f551fb448",
+      "network": "unchanged original 6Q/128D/2-layer/21D/three-piece MINCO",
+      "loss": "unchanged original B_set Hungarian imitation",
+      "score_feasibility": "no supervision; final 2 head rows/bias must stay bit-identical; shared feature changes may change untrained scores, never selection",
+      "steps": 2880,
+      "batch_size": 8,
+      "optimizer": "fresh AdamW both arms; do not restore B1 optimizer moments",
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "weight_decay": 0.0,
+      "lr_start": 0.0002,
+      "lr_end": 1e-05,
+      "schedule": "cosine endpoint inclusive over exactly2880",
+      "clip_norm": 10.0,
+      "precision": "FP32, no AMP",
+      "augmentation": null,
+      "batch_roles": {
+        "backbone_near": 2,
+        "backbone_far": 2,
+        "supplement_near": 2,
+        "supplement_far": 2
+      },
+      "exposures_per_run": 23040,
+      "planned_direct_teacher_supervisions": 40320,
+      "C1_original_exposure_fraction": 0.75,
+      "C0_all_original_exposure_fraction": 1.0,
+      "C1_orthogonal_unique_tasks": 192,
+      "C0_replay_supplement_near_unique": 48,
+      "unique_data_counts_equal": false,
+      "fairness": "exact same paired contexts/full velocity/M/roles/order, Near-Far4+4, steps and optimizer; intervention changes distinct Goal information and extends radial coverage jointly, not pure antisymmetric-only causal ablation",
+      "backbone_exposures_per_old_task": 60,
+      "supplement_old_near_C0_exposures_per_task": 120,
+      "supplement_old_far_both_exposures_per_task": 120,
+      "C1_exposures_per_new_task": 30,
+      "checkpoints": [
+        0,
+        960,
+        1920,
+        2880
+      ],
+      "final_selection": 2880,
+      "train_physics_diagnostics": [
+        0,
+        1440,
+        2880
+      ],
+      "formal_evaluation_steps": [
+        0,
+        2880
+      ],
+      "formal_policy": "step0 shared per paired seed, final only after SHA sealed; no tuning/reselection/intermediate formal eval",
+      "primary": "Near complete Oracle macro by family/environment on eval_goal128",
+      "co_primary_response": "all fixedQ antisymmetric gain and normalized vector error; no Query rematching",
+      "H1_evidence_rule": {
+        "mean_paired_primary_delta_at_least": 0.1,
+        "each_seed_delta_positive": true,
+        "relative_response_vector_error_reduction_at_least": 0.2,
+        "original_retention_C1_minus_C0_each_seed_at_least": -0.05
+      },
+      "H0_direction_evidence_rule": "all3 primary deltas<=0 AND mean response vector error not lower; budget-conditional directional support, not proof of equivalence",
+      "other_results": "mixed signs, positive but below practical margin, retention failure -> inconclusive/tradeoff; never architecture failure proof or lowering original physics standards",
+      "statistics": "3 paired seeds report all, mean/std/range/worst; tasks/queries/repeats not independent families; only2 primary and2 novel geometry families; no population significance claims",
+      "failure": "abort affected run on NaN/Inf/MINCO exception; retain scene/raw/error, no skip/resume/budget extension; preserve all seeds; no missing-as-zero. Others continue only if authorized",
+      "logging": "each step full6xM cost, assignment and switches, direct raw vs indirect Query gradient, lr, loss, parameter score rows integrity, all6 trajectory physics at fixed diag steps",
+      "test_protocol_sha256_to_be_frozen": "EVALUATION_PLAN.json",
+      "task_plan_sha256": "88fbd8313a3e5bb0d3d17ddf9da7ef95e3bbebc2e0cace2c281b9b6054b52912",
+      "order_registry_sha256": "af32689837263e5310bbf6ca4fb1facb5952a76c6b06da72c63c3e8d3898a1d5"
+    },
+    "spec": {
+      "seed": 42,
+      "arm": "C1_orthogonal",
+      "name": "A42_C1_orthogonal",
+      "checkpoint": "query_minco/outputs/p2c2c1b1_train_v1/runs/A42/checkpoint_step5760.pt",
+      "checkpoint_sha256": "6987a9de04088b652890eb65c21f6e5e5940097193f9a01cac0ea5454a6c22cc",
+      "order": "query_minco/outputs/p2c2c1b2c0_preflight_v1/orders/C1_orthogonal_seed42.npz",
+      "order_sha256": "99c51f72f5be4047ee5566754f6fe3aac5d4783c15f0145c533c70d2da084b7d",
+      "output": "query_minco/outputs/b2c1/train_v3/A42_C1_orthogonal",
+      "revision": "E1"
+    },
+    "network_config": {
+      "depth_channels": 2,
+      "depth_height": 128,
+      "depth_width": 160,
+      "state_dim": 12,
+      "embed_dim": 128,
+      "num_queries": 6,
+      "decoder_layers": 2,
+      "attention_heads": 4,
+      "ffn_dim": 256,
+      "output_dim": 21,
+      "dropout": 0.0
+    },
+    "parameter_config": {
+      "position_min_m": [
+        0.0,
+        -4.0,
+        -2.0
+      ],
+      "position_max_m": [
+        10.0,
+        4.0,
+        2.0
+      ],
+      "terminal_velocity_axis_max_mps": [
+        6.0,
+        4.0,
+        3.0
+      ],
+      "terminal_acceleration_axis_max_mps2": [
+        6.0,
+        6.0,
+        4.0
+      ],
+      "min_total_time_s": 0.8,
+      "max_total_time_s": 2.2,
+      "min_segment_time_s": 0.12
+    },
+    "raw_21d": [
+      {
+        "index": 0,
+        "meaning": "inner_p1_B0_x",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 1,
+        "meaning": "inner_p1_B0_y",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 2,
+        "meaning": "inner_p1_B0_z",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 3,
+        "meaning": "inner_p2_B0_x",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 4,
+        "meaning": "inner_p2_B0_y",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 5,
+        "meaning": "inner_p2_B0_z",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 6,
+        "meaning": "terminal_p_B0_x",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 7,
+        "meaning": "terminal_p_B0_y",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 8,
+        "meaning": "terminal_p_B0_z",
+        "transform": "tanh to absolute B0 position bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 9,
+        "meaning": "terminal_v_x",
+        "transform": "tanh times per-axis velocity bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 10,
+        "meaning": "terminal_v_y",
+        "transform": "tanh times per-axis velocity bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 11,
+        "meaning": "terminal_v_z",
+        "transform": "tanh times per-axis velocity bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 12,
+        "meaning": "terminal_a_x",
+        "transform": "tanh times per-axis acceleration bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 13,
+        "meaning": "terminal_a_y",
+        "transform": "tanh times per-axis acceleration bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 14,
+        "meaning": "terminal_a_z",
+        "transform": "tanh times per-axis acceleration bounds",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 15,
+        "meaning": "total_duration_logit",
+        "transform": "0.8+1.4*sigmoid",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 16,
+        "meaning": "segment_0_allocation_logit",
+        "transform": "0.12+(T-0.36)*softmax",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 17,
+        "meaning": "segment_1_allocation_logit",
+        "transform": "0.12+(T-0.36)*softmax",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 18,
+        "meaning": "segment_2_allocation_logit",
+        "transform": "0.12+(T-0.36)*softmax",
+        "constructs_trajectory": true,
+        "supervised": true
+      },
+      {
+        "index": 19,
+        "meaning": "unsupervised_score",
+        "transform": "identity, NOT usable for ranking",
+        "constructs_trajectory": false,
+        "supervised": false
+      },
+      {
+        "index": 20,
+        "meaning": "unsupervised_feasibility_logit",
+        "transform": "identity, NOT calibrated or usable as probability",
+        "constructs_trajectory": false,
+        "supervised": false
+      }
+    ],
+    "loss": {
+      "id": "B_set_six_term_imitation_v1",
+      "terms": [
+        {
+          "id": "trajectory_position_mse",
+          "weight": 1.0,
+          "reduction": "mean S=32 and xyz",
+          "source": "query_minco/p2b/imitation.py:39"
+        },
+        {
+          "id": "trajectory_velocity_mse",
+          "weight": 0.1,
+          "reduction": "mean S=32 and xyz",
+          "source": "query_minco/p2b/imitation.py:39"
+        },
+        {
+          "id": "terminal_position_mse",
+          "weight": 0.5,
+          "reduction": "mean xyz",
+          "source": "query_minco/p2b/imitation.py:39"
+        },
+        {
+          "id": "total_duration_squared_error",
+          "weight": 0.2,
+          "reduction": "scalar",
+          "source": "query_minco/p2b/imitation.py:39"
+        },
+        {
+          "id": "terminal_velocity_mse",
+          "weight": 0.1,
+          "reduction": "mean xyz",
+          "source": "query_minco/p2c2a/objective.py:9"
+        },
+        {
+          "id": "terminal_acceleration_mse",
+          "weight": 0.01,
+          "reduction": "mean xyz",
+          "source": "query_minco/p2c2a/objective.py:9"
+        }
+      ],
+      "trajectory_alignment": "same physical time min(Tq,Tm)*linspace(0,1,32)",
+      "reduction": "mean matched teacher costs per task, then batch mean",
+      "weights_source": "literal constants in imitation.py and objective.py, not only config dictionary",
+      "no_physics_diversity_or_selector_loss": true
+    },
+    "matcher": {
+      "id": "p2c2a_B_set_v1",
+      "cost_shape": [
+        6,
+        "M"
+      ],
+      "solver": "scipy.optimize.linear_sum_assignment",
+      "discrete_assignment_detached": true,
+      "selected_original_cost_keeps_grad": true,
+      "M_range": [
+        1,
+        6
+      ],
+      "actual_training_M": [
+        1,
+        4
+      ],
+      "unmatched": "zero direct raw-output loss gradient; shared attention/features may still receive indirect gradients"
+    },
+    "optimizer": {
+      "type": "fresh AdamW",
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "weight_decay": 0,
+      "clip_norm": 10,
+      "lr": "1e-5+0.5*(2e-4-1e-5)*(1+cos(pi*index/2879))",
+      "updates": 2880,
+      "batch_size": 8,
+      "task_exposures": 23040,
+      "teacher_exposures": 40320,
+      "FP32": true,
+      "AMP": false,
+      "TF32": false,
+      "strict_determinism": true
+    },
+    "unsupervised": {
+      "raw_indices": [
+        19,
+        20
+      ],
+      "final_head_rows_and_bias_unchanged": true,
+      "score_values_may_change_via_shared_features": true,
+      "online_score_usable": false,
+      "feasibility_probability_usable": false
+    },
+    "initialization": "B1 same-seed weights-only transport, fresh optimizer",
+    "data_bindings": "DATA_BINDINGS.json"
+  },
+  "source_revision": {
+    "historical_git": "41149b8968a9ae87f65bd9fecb230a2dbbfed969",
+    "historical_Query_sources_tracked": false,
+    "remote_base": "436750dceb02cf55a27dcfc2c0b64da7f22081f5",
+    "new_source_binding": "portable_source_sha256; final migration commit receipt separately records non-self-referential commit SHA"
+  }
+}
