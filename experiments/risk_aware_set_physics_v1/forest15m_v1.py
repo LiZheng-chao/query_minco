@@ -174,11 +174,12 @@ def capture(run,kind,lib):
    ray_done=time.perf_counter();enc=lib.encode(raw);encode_s=time.perf_counter();state=np.asarray(row['state'],np.float32)
    with (run/'inputs'/(tid+'.npz')).open('xb') as f:np.savez(f,depth_input=enc,state=state,depth_m=raw)
    R=rotation(row['q_xyzw']);g=R@state[6:9]+row['position_world_m']
+   straight=lib.voxel.classify(world,[np.asarray([row['position_world_m'],g])],.12,.03,16,50000)
    row.update(input_path=str(run/'inputs'/(tid+'.npz')),input_sha256=sha(run/'inputs'/(tid+'.npz')),
       raw_depth_sha256=sha(rawpath),depth_input_sha256=hashlib.sha256(enc.tobytes()).hexdigest(),
       state_sha256=hashlib.sha256(state.tobytes()).hexdigest(),ray_audit_sha256=sha(run/'ray_audits'/(tid+'.json')),
       input_and_ray_audit_s=encode_s-started,input_encode_s=encode_s-ray_done,ray_audit_s=ray_done-started,
-      global_goal_occupied=world.point_witness(np.asarray(row['goals']['global_goal_W']),.15) is not None,goal_occupied=world.point_witness(g,.15) is not None,
+      straight_to_local_goal_geometry=straight,global_goal_occupied=world.point_witness(np.asarray(row['goals']['global_goal_W']),.15) is not None,goal_occupied=world.point_witness(g,.15) is not None,
       local_goal_outside_map=not world.inside_envelope(g,g,.15),renderer_s_per_frame=render_s/max(1,len(poses)))
    tasks.append(row)
   maprecords.append(dict(seed=seed,tree_dist=item['tree_dist'],map_sha256=world.hash,metadata_sha256=sha(folder/'occupancy_metadata.json'),
@@ -271,7 +272,9 @@ def summary(run,rows):
   for label in ['C1','E0','E1','E2','E3']:
    group=[x for x in rows if x['map_seed']==seed and x['model']==label]
    candidates=[q for x in group for q in x['candidates']]
-   maps.append(dict(map_seed=seed,model=label,tasks=len(group),physics_pass=float(np.mean([q['physics']=='PASS' for q in candidates])),
+   maps.append(dict(map_seed=seed,model=label,tasks=len(group),tree_dist=next((x.get('tree_dist') for x in group if x.get('tree_dist') is not None),None),
+      geometric_connected_groups_mean=float(np.mean([x.get('modes',{}).get('geometric_connected_group_count',0) for x in group])),
+      straight_blocked_fraction=float(np.mean([x.get('straight_to_local_goal_geometry',{}).get('status') in ['BODY_COLLISION','MARGIN_ONLY'] for x in group])),physics_pass=float(np.mean([q['physics']=='PASS' for q in candidates])),
       goal_pass=float(np.mean([q['goal']['passed'] for q in candidates])),complete_pass=float(np.mean([q['complete']=='PASS' for q in candidates])),
       oracle_pass=float(np.mean([any(q['complete']=='PASS' for q in x['candidates']) for x in group])),
       body_collision_rate=float(np.mean([q['geometry']['status']=='BODY_COLLISION' for q in candidates])),
@@ -363,7 +366,7 @@ def evaluate_tasks(run,tasks,lib):
    timing.update(geometry_evaluation_s=time.perf_counter()-started,
                  input_and_ray_audit_s=task['input_and_ray_audit_s'],input_encode_s=task['input_encode_s'],ray_audit_s=task['ray_audit_s'],native_render_process_amortized_s=task['renderer_s_per_frame'])
    row=dict(task_id=tid,map_seed=task['map_seed'],model=b['label'],method_id=b['method_id'],
-      checkpoint_sha256=b['checkpoint']['sha256'],input_sha256=task['input_sha256'],goals=task['goals'],
+      checkpoint_sha256=b['checkpoint']['sha256'],input_sha256=task['input_sha256'],goals=task['goals'],tree_dist=task['tree_dist'],straight_to_local_goal_geometry=task['straight_to_local_goal_geometry'],
       goal_occupied=task['goal_occupied'],global_goal_occupied=task['global_goal_occupied'],goal_outside_map=task['local_goal_outside_map'],candidates=candidates,modes=modes,timing=timing)
    with (run/'results'/(tid+'_'+b['label']+'.npz')).open('xb') as f:
     np.savez(f,raw=raw.numpy(),coefficients=out.trajectory.coeffs.numpy(),durations=out.parameters.durations.numpy(),state=state,head_pva=out.parameters.head_pva.numpy(),tail_pva=out.parameters.tail_pva.numpy(),inner_pts=out.parameters.inner_pts.numpy())
