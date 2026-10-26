@@ -13,3 +13,7 @@ __pycache__/
 build/
 dist/
 .env
+
+# Local experiment reports and registration records
+experiments/**/*.md
+experiments/**/*.json
