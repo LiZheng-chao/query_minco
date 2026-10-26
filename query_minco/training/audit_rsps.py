@@ -10,6 +10,7 @@ from .run_spec import source_files
 from .losses.imitation import cost_matrix
 from query_minco.trajectory import TrajectoryPostprocessor
 from .losses.set_physical_risk import segment_samples
+from .datasets.geometry_sidecar import validate_semantics
 
 
 def numpy_physical(p, v, alpha, boxes, cfg):
@@ -56,6 +57,10 @@ def audit_record(record, arrays, samples, sidecar, seed, batch_index, expected_m
     ids,_=sidecar.orders[seed].batch(batch_index)
     require(record['ids']==ids==[s.sample_id for s in samples], 'AUDIT_ORDER')
     fields=sidecar.load(samples)
+    require(len(fields)==len(samples),'GEOMETRY_BATCH')
+    for field in fields:
+        validate_semantics(field.row)
+        require(field.boxes.shape==(len(field.row['obstacles']),2,3),'GEOMETRY_BOX_BINDING')
     require(all(np.isfinite(v).all() for v in arrays.values()), 'AUDIT_ARRAY_FINITE')
     raw=torch.from_numpy(arrays['raw'])
     require(raw.dtype==torch.float32 and raw.shape==(len(samples),6,21), 'AUDIT_RAW')
@@ -94,9 +99,12 @@ def audit_record(record, arrays, samples, sidecar, seed, batch_index, expected_m
     clear=[];domain_out=[]
     for b,field in enumerate(fields):
         box=field.boxes.numpy()
-        delta=np.abs(arrays['positions'][b,...,None,:]-box.mean(1))-(box[:,1]-box[:,0])/2
-        sdf=np.linalg.norm(np.maximum(delta,0),axis=-1)+np.minimum(delta.max(-1),0)
-        clear.append(sdf.min(-1).min(-1)-cfg['radius'])
+        if field.row['empty_certified']:
+            clear.append(np.full(arrays['positions'].shape[1],np.inf))
+        else:
+            delta=np.abs(arrays['positions'][b,...,None,:]-box.mean(1))-(box[:,1]-box[:,0])/2
+            sdf=np.linalg.norm(np.maximum(delta,0),axis=-1)+np.minimum(delta.max(-1),0)
+            clear.append(sdf.min(-1).min(-1)-cfg['radius'])
         domain=np.asarray(field.row['flight_center_domain_m'])
         domain_out.append(((arrays['positions'][b]<domain[0])|(arrays['positions'][b]>domain[1])).any((-1,-2)).tolist())
     clear=np.asarray(clear)
@@ -116,7 +124,10 @@ def audit_record(record, arrays, samples, sidecar, seed, batch_index, expected_m
                 per_query_physical=per_query.tolist(),
                 sampled_sphere_collision_fraction=float(np.mean(clear<0)),
                 sampled_surface_margin_violation_fraction=float(np.mean(clear<cfg['margin'])),
-                minimum_sampled_surface_clearance=clear.tolist(), sampled_domain_out=domain_out,
+                minimum_sampled_surface_clearance=[[None if fields[b].row['empty_certified'] else float(x) for x in row] for b,row in enumerate(clear)],
+                certified_empty=[f.row['empty_certified'] for f in fields],
+                sampled_collision=(clear<0).tolist(),sampled_margin_violation=(clear<cfg['margin']).tolist(),
+                sampled_domain_out=domain_out,
                 distinct_sampled_paths_rms025=distinct, physical_to_imitation_gradient_ratio=float(np.linalg.norm(pg)/max(np.linalg.norm(ig),1e-30)),
                 physical_imitation_gradient_cosine=cosine, stationary_physical_queries=int(np.count_nonzero(pg_norm<=1e-12)),
                 )

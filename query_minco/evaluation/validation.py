@@ -124,7 +124,7 @@ def validate_teacher(coeffs,durations,head,tail,inner,scene):
                    for a,b,t in zip(c,ref,d)) for k in range(3)]
     if any(e>tol for e,tol in zip(referrors,[.0002,.002,.01])):failed.append("independent_reference")
     dense=np.concatenate([evaluate(a,np.linspace(0,t,1025)) for a,t in zip(c,d)])
-    sampled=min(float(point_box_distance(dense,b).min()) for b in scene["obstacles"])-CONFIG["body_radius_m"]
+    sampled=min((float(point_box_distance(dense,b).min()) for b in scene["obstacles"]),default=np.inf)-CONFIG["body_radius_m"]
     clear=min([x.get("surface_clearance_lower_bound_m",-1.) for x in certs])
     return {"passed":not failed,"reasons":sorted(set(failed)),"boundary_max_abs_pva":boundary,
             "continuity_max_abs_orders_0_to_4":res,"waypoint_max_abs_m":wp,

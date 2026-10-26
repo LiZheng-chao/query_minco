@@ -9,6 +9,7 @@ from .initialization import configure,head_rows,rows_unchanged
 from .recipe import optimizer
 from .checkpoints import save_checkpoint
 from . import objective
+from .datasets.geometry_sidecar import validate_semantics
 from .pilot_spec import recipe,lr_at,qualify,authorize
 from .run_spec import verify_code
 from .losses.set_physical_risk import segment_samples,physical_loss,reduce_set,box_sdf
@@ -37,6 +38,11 @@ def batch(model,samples,geo,s):
     verify_code(s['code'])
     model.zero_grad(set_to_none=True);cfg=s['recipe'];started=time.perf_counter();before=state_sha(model)
     fields=geo.load(samples)
+    require(len(fields)==len(samples),'GEOMETRY_BATCH')
+    for field in fields:
+        validate_semantics(field.row)  # Provenance is authenticated by geo.load, not this flag.
+        require(field.boxes.shape==(len(field.row['obstacles']),2,3),'GEOMETRY_BOX_BINDING')
+    certified_empty=[field.row['empty_certified'] for field in fields]
     imit,matches,raw,out,costs=objective.forward(model,samples,'B_set',s['device'])
     p,v,a=segment_samples(out.trajectory,64)
     mask=torch.zeros(raw.shape[:2],dtype=torch.bool,device=raw.device)
@@ -62,7 +68,9 @@ def batch(model,samples,geo,s):
     dg=out.parameters.durations.grad;require(dg is not None and torch.isfinite(dg).all(),'DURATION_GRADIENT')
     for n,x in model.named_parameters():
         if n.startswith('trajectory_head.') and x.shape[0]==21:require(not torch.count_nonzero(x.grad[19:21]),'HEAD_GRADIENT')
-    unsafe=torch.stack([(box_sdf(p[b],field).min(-1).values<.12) for b,field in enumerate(boxes)])
+    unsafe=torch.stack([torch.zeros(p.shape[1],dtype=torch.bool,device=p.device) if certified_empty[b]
+                        else (box_sdf(p[b],field).min(-1).values<.12)
+                        for b,field in enumerate(boxes)])
     if cfg['arm']!='E0':require(not bool((unsafe & (gp.norm(dim=-1)==0)).any()),'UNSAFE_ZERO_PHYSICAL_GRADIENT')
     ratio=float(gp.norm()/gi.norm().clamp_min(1e-30))
     cosine=float((gp*gi).sum()/(gp.norm()*gi.norm()).clamp_min(1e-30))
@@ -70,7 +78,8 @@ def batch(model,samples,geo,s):
         durations=out.parameters.durations,positions=p,velocities=v,time_weights=a,per_query=pq,
         mask=mask,raw_grad=g,physical_raw_grad=gp,imitation_raw_grad=gi,duration_grad=dg).items()}
     arrays.update({'cost_%d'%b:c.detach().cpu().numpy() for b,c in enumerate(costs)})
-    record=dict(ids=[x.sample_id for x in samples],matches=matches,loss=float(loss.detach()),
+    record=dict(ids=[x.sample_id for x in samples],certified_empty=certified_empty,
+        sampled_collision=unsafe.detach().cpu().tolist(),matches=matches,loss=float(loss.detach()),
         imitation=float(imit.detach()),physical=float(phys.detach()),recipe_sha256=s['recipe_sha256'],
         training_method_id=s['training_method_id'],spec_sha256=digest(s),model_sha_before=before,
         physical_imitation_gradient_ratio=ratio,gradient_cosine=cosine,
