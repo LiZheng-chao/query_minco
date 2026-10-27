@@ -156,7 +156,7 @@ def evaluate_development(model,binding,store=None):
    result.append(dict(id=sample.sample_id,physics=physics,goal=goals,complete_oracle=bool(np.any(np.array(physics)&goals)),known_feasible_modes=sorted(modes)))
  return dict(rows=result,goal_rate=float(np.mean([x['goal'] for x in result])),physics_rate=float(np.mean([x['physics'] for x in result])),oracle_rate=float(np.mean([x['complete_oracle'] for x in result])),feasible_mode_count=sum(len(x['known_feasible_modes']) for x in result),selector='N/A',contract='original hard validation + original frozen mode heuristic')
 
-def run_engine(s,run,model,opt,batch_fn,*,root_spec=None,resume=None,fault=None,evaluator=None,pause_at=None,stop_requested=lambda:False):
+def run_engine(s,run,model,opt,batch_fn,*,root_spec=None,resume=None,fault=None,evaluator=None,pause_at=None,stop_requested=lambda:False,update_fn=None):
  """Internal lifecycle; public CUDA authorization/data gates are execute()."""
  run=Path(run);root_spec=root_spec or s;rows=head_rows(model);started=time.monotonic()
  (run/'intents').mkdir();(run/'commits').mkdir();state=None;committed=None
@@ -182,7 +182,7 @@ def run_engine(s,run,model,opt,batch_fn,*,root_spec=None,resume=None,fault=None,
    if stop_requested():raise KeyboardInterrupt('graceful stop at committed boundary')
    resource_check(s,started,run)
    samples,geo,method=batch_fn(index)
-   rec,arrays=update(model,opt,samples,geo,method,s['profile'],index,streak)
+   rec,arrays=(update_fn or update)(model,opt,samples,geo,method,s['profile'],index,streak)
    rec['task_exposures_completed']=(index+1)*len(samples)
    rec['teacher_exposures_completed']=state.get('teacher_exposures_completed',0)+sum(rec['M'])
    rec.update(root_spec_sha256=digest(root_spec),spec_sha256=digest(root_spec),dev_baseline=baseline,dev_history=history)
@@ -294,14 +294,17 @@ def _same_inherited_state(first,second):
  for key in ('state_dict','optimizer_state_dict','rng','completed_optimizer_updates','order_cursor','next_lr_index','scheduler','spec_sha256'):
   require(_tree_equal(x[key],y[key]),'AUDIT_INHERITED_STATE '+key)
 
-def audit_run(run,ds=None,geo=None):
+def audit_run(run,ds=None,geo=None,*,cpu_validator=None):
  """Read-only content audit of a completed scientific family, including credited parent."""
  run=Path(run);s=read(run/'RUN_SPEC.json');root=read(run/'ROOT_SPEC.json')
  require(read(run/'RESULT.json')['status']=='COMPLETED_AWAITING_AUDIT','AUDIT_NOT_COMPLETE')
  require(read(run/'PROCESS_EXIT.json')['returncode']==0,'AUDIT_PROCESS_EXIT')
  expected_init=None
  if ds is None:
-  validate(s);ds,geo,init,_=qualify_bindings(s['bindings'],s['seed']);expected_init=init['weights_sha256']
+  if cpu_validator is not None:
+   require(s['schema']=='pg1_local_cpu_spec_v1' and s['device']=='cpu','AUDIT_LOCAL_CPU_ONLY');cpu_validator(s)
+  else:validate(s)
+  ds,geo,init,_=qualify_bindings(s['bindings'],s['seed']);expected_init=init['weights_sha256']
  else:require(s['schema']=='SYNTHETIC_CPU_ONLY' and s['device']=='cpu','AUDIT_TEST_SCOPE')
  families=[];cursor=run;seen=set()
  while True:
