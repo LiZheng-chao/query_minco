@@ -10,7 +10,7 @@ from .bottleneck import bottleneck_loss
 from .corridor import penalty
 from .losses import mode_query,conditional_control,diversity
 
-def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities=None,assignment_policy=None):
+def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities=None,assignment_policy=None,bottleneck_policy=None):
  cfg=bank.cfg;raw=z["raw"];out=z["output"];par=out.parameters;tr=out.trajectory
  zero=(raw.sum()+tr.coeffs.sum()+par.durations.sum())*0
  banks=[bank.get(s,f) for s,f in zip(samples,z["fields"])]
@@ -29,6 +29,7 @@ def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities
    eligible=target is not None and target["representable"] and not bool(z["labels"]["passed"][b,q])
    if eligible:
     value,bd=bottleneck_loss(tr.coeffs[b,q],par.durations[b,q],target["bottlenecks"],cfg["sigma_perp"],cfg["sigma_parallel"],cfg["beta_parallel"])
+    if bottleneck_policy is not None:value,bd=bottleneck_policy(tr.coeffs[b,q],par.durations[b,q],target,teachers)
     cv,cd=penalty(tr.coeffs[b,q],par.durations[b,q],target["corridor"],teachers["scene"],teachers["empty_certified"],cfg["sigma_plane"])
     if bd["count"]:bl.append(value)
     if cd["terms"]:cl.append(cv)
@@ -53,6 +54,6 @@ def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities
   per_query=dict(mode=torch.stack(qmode),bottleneck=torch.stack(qbn),convex_corridor=torch.stack(qcor),**qd["per_query"]),
   weights=ew,method=method,recipe=cfg)
 
-def forward(model,samples,geo,method,pg2_weights,weights,bank=None,context=None,step=0,fixed_priorities=None,assignment_policy=None):
+def forward(model,samples,geo,method,pg2_weights,weights,bank=None,context=None,step=0,fixed_priorities=None,assignment_policy=None,bottleneck_policy=None):
  z=pg2_forward(model,samples,geo,PG2_PREFIX+"safe_v1",context,pg2_weights)
- return augment(z,samples,bank or TeacherBank(recipe()),method,weights,step,fixed_priorities=fixed_priorities,assignment_policy=assignment_policy)
+ return augment(z,samples,bank or TeacherBank(recipe()),method,weights,step,fixed_priorities=fixed_priorities,assignment_policy=assignment_policy,bottleneck_policy=bottleneck_policy)

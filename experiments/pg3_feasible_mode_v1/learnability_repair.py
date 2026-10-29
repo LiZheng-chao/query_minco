@@ -45,14 +45,17 @@ def prepare():
  print("REPAIR_CPU0",priority,flush=True)
 def run(arm,root=None):
  R=OUT/"learnability_repair001" if root is None else Path(root)
- require(arm in ("A","B","C"),"NO_UNSUPPORTED_TASK_GATE")
- policy=None
- if arm=="C":
+ require(arm in ("A","B","C","R"),"NO_UNSUPPORTED_TASK_GATE")
+ policy=None;region=None
+ if arm in ("C","R"):
   from query_minco.training.pg3_feasible_mode_v1.adaptive_assignment import AdaptiveAssignment
   policy=AdaptiveAssignment()
+ if arm=="R":
+  from query_minco.training.pg3_feasible_mode_v1.feasible_section import RegionBottleneck
+  region=RegionBottleneck()
  cal=read(R/"preparation002/CPU0.json");verify_code(cal["code"]);ds,geo,init,qual=qualify_bindings(cal["bindings"],42)
- rid="A42_PG3_Learn_"+("Rotation" if arm=="A" else ("Fixed" if arm=="B" else "Adaptive"))+"_CPU32_run001";rp=R/"runs"/rid;rp.mkdir(parents=True,exist_ok=False)
- spec=dict(schema="pg3_repair_cpu32_v1",method_id=PREFIX+("_learn_rotation_v1" if arm=="A" else ("_learn_fixed_v1" if arm=="B" else "_m1_adaptive_assignment_v1")),run_id=rid,
+ rid="A42_PG3_Learn_"+("Rotation" if arm=="A" else ("Fixed" if arm=="B" else ("Adaptive" if arm=="C" else "FeasibleRegion")))+"_CPU32_run001";rp=R/"runs"/rid;rp.mkdir(parents=True,exist_ok=False)
+ spec=dict(schema="pg3_repair_cpu32_v1",method_id=PREFIX+("_learn_rotation_v1" if arm=="A" else ("_learn_fixed_v1" if arm=="B" else ("_m1_adaptive_assignment_v1" if arm=="C" else "_feasible_section_region_v1"))),run_id=rid,
   source=cal["code"],cpu0=dict(path=str(R/"preparation002/CPU0.json"),sha256=sha(R/"preparation002/CPU0.json")),bindings=cal["bindings"],
   initialization=init,selected_ids=cal["ids"],fixed_priority=cal["fixed_priority"],arm=arm,seed=42,device="cpu",precision="FP32",threads=1,batch_size=8,
   max_updates=32,checkpoint_steps=[0,8,16,32],schedule="original_cosine_2e-5_1e-6_32",optimizer=dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),
@@ -61,6 +64,9 @@ def run(arm,root=None):
  if policy is not None:
   spec["adaptive_assignment"]=policy.cfg
   require(root is not None and cal["adaptive_config"]==policy.cfg and cal["baseline_equivalence"] is True,"ADAPTIVE_PREREQUISITES")
+ if region is not None:
+  gatepath=R/"COUNTERFACTUAL_GATE.json";require(read(gatepath)["passed"] is True and cal["region_cpu0_passed"] is True,"REGION_ADMISSION")
+  spec["bottleneck_target"]=region.cfg;spec["region_gate"]=dict(path=str(gatepath),sha256=sha(gatepath));spec["head_projection"]=False
  auth=dict(approved=True,authorized_by="LiZheng-chao",spec_sha256=digest(spec),run_id=rid,max_optimizer_updates=32,device="cpu")
  write(rp/"RUN_SPEC.json",spec);write(rp/"AUTHORIZATION.json",auth);write(rp/"QUALIFICATION.json",qual)
  configure(dict(seed=42,threads=1,device="cpu"));model=model_from(init);before=state_sha(model);require(before==init["weights_sha256"],"REPAIR_INIT")
@@ -79,7 +85,7 @@ def run(arm,root=None):
    require(sum(p.stat().st_size for p in rp.rglob("*") if p.is_file())<4*1024**3,"REPAIR_DISK")
    require(source_files()==spec["source"]["files"] and os.environ.get("CUDA_VISIBLE_DEVICES")=="" and torch.get_num_threads()==1,"REPAIR_RUNTIME_SOURCE")
    model.train();opt.zero_grad(set_to_none=True)
-   z=forward(model,samples,geo,PREFIX+"_route",cal["old_weights"],cal["new_weights"],bank,ctx,step,fixed_priorities=cal["fixed_priority"] if arm=="B" else None,assignment_policy=policy)
+   z=forward(model,samples,geo,PREFIX+"_route",cal["old_weights"],cal["new_weights"],bank,ctx,step,fixed_priorities=cal["fixed_priority"] if arm=="B" else None,assignment_policy=policy,bottleneck_policy=region)
    rec,vec,total=audit(model,z,details=True);ratio=rec["physical_imitation_ratio"]
    require(bool(torch.isfinite(total).all()) and math.isfinite(ratio),"REPAIR_NONFINITE")
    streak=streak+1 if ratio>10 else 0
