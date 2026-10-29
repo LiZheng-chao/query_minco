@@ -9,6 +9,14 @@ from query_minco.trajectory.parameter_decoder import PhysicalParameterConfig
 from .corridor import build_corridor,validate_scene
 from .bottleneck import crossing_events
 
+def certificate_diagnostics(value,certified_empty):
+ if isinstance(value,dict):return {k:certificate_diagnostics(v,certified_empty) for k,v in value.items()}
+ if isinstance(value,(list,tuple)):return [certificate_diagnostics(v,certified_empty) for v in value]
+ if isinstance(value,(float,np.floating)) and not np.isfinite(value):
+  require(certified_empty and np.isinf(value),"PG3_NONFINITE_CERTIFICATE_METADATA")
+  return None
+ return value
+
 def representability(inner,tail,durations):
  cfg=PhysicalParameterConfig();p=np.concatenate([np.asarray(inner),np.asarray(tail)[:1]])
  d=np.asarray(durations);tail=np.asarray(tail)
@@ -69,7 +77,7 @@ class TeacherBank:
     labels,events=landmarks(cc,dd,scene,self.cfg["bottleneck_range_m"])
     corridor=build_corridor(cc,dd,scene,empty,self.cfg["corridor_max_depth"])
     rows.append(dict(teacher=m,coeffs=cc.tolist(),durations=dd.tolist(),inner=inner.tolist(),tail=tail.tolist(),
-     certified=True,check=check,representability=flags,representable=flags["positions"] and flags["velocity"],
+     certified=True,check=certificate_diagnostics(check,empty),geometry_bound_semantics="UNBOUNDED_CERTIFIED_EMPTY" if empty else "FINITE_AABB_BOUNDS",representability=flags,representable=flags["positions"] and flags["velocity"],
      bottlenecks=labels,crossing_diagnostics=events,corridor=corridor,
      mode_signature=[(x["box"],*x["side"]) for x in labels if x["side"] is not None],
      mode_label_source="CERTIFIED_TEACHER_AABB_FACE_SIGNATURE_NOT_HOMOTOPY" if any(x["side"] for x in labels) else "TEACHER_DIVERSITY_ONLY",

@@ -17,7 +17,7 @@ from query_minco.inference.identity import state_sha
 from experiments.pg3_feasible_mode_v1.common import ROOT,OUT,dev_field,raw_base,query_metrics
 
 def run():
- torch.set_num_threads(1);prep=OUT/"preparation001";cal=read(prep/"CALIBRATION.json")
+ torch.set_num_threads(1);prep=OUT/"preparation002";cal=read(prep/"CALIBRATION.json")
  ds,geo,init,q=qualify_bindings(cal["bindings"],42)
  dev=load_rows(read(cal["bindings"]["path"])["development"])
  train=ds.load(cal["selected_training_tasks"]);fields=geo.load(train)

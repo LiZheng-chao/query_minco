@@ -201,4 +201,17 @@ class PG3(unittest.TestCase):
   e=crossing_events(c.numpy(),d.numpy(),1.)
   self.assertEqual(e["status"],"COINCIDENT_PLANE_SEGMENT_UNSUPPORTED");self.assertIsNone(e["selected"])
 
+ def test_certified_empty_teacher_metadata_is_strict_json(self):
+  import json
+  c=torch.zeros(1,3,3,6);c[0,:,0,0]=torch.tensor([0.,.8,1.6]);c[0,:,0,1]=2.
+  d=torch.full((1,3),.4);state=torch.zeros(12);state[0]=2.
+  sample=SimpleNamespace(sample_id="empty_boundary",state=state,teacher_coeffs=c,teacher_durations=d)
+  field=SimpleNamespace(row=dict(obstacles=[],flight_center_domain_m=[[0.,-1.,-1.],[3.,1.,1.]],empty_certified=True))
+  result=TeacherBank(recipe()).get(sample,field)
+  json.dumps(result,allow_nan=False)
+  self.assertTrue(result["teachers"][0]["certified"])
+  self.assertEqual(result["teachers"][0]["geometry_bound_semantics"],"UNBOUNDED_CERTIFIED_EMPTY")
+  field.row["empty_certified"]=False
+  with self.assertRaises(ValueError):TeacherBank(recipe()).get(sample,field)
+
 if __name__=="__main__":unittest.main()

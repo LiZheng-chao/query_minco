@@ -15,7 +15,7 @@ from query_minco.trajectory import TrajectoryPostprocessor
 from experiments.pg3_feasible_mode_v1.common import ROOT,OUT,model_from,dev_field,raw_base,query_metrics
 
 def run():
- prep=OUT/"preparation001";cal=read(prep/"CALIBRATION.json");gate=read(prep/"CPU0.json")
+ prep=OUT/"preparation002";cal=read(prep/"CALIBRATION.json");gate=read(prep/"CPU0.json")
  require(gate["passed"],"PG3_RAW_CPU0");ds,geo,init,q=qualify_bindings(cal["bindings"],42)
  model=model_from(init).eval();before=state_sha(model)
  out=OUT/"raw_learnability001";out.mkdir(parents=True,exist_ok=False)

@@ -8,7 +8,7 @@ from query_minco.training.pg3_feasible_mode_v1.execution import make_spec,author
 from query_minco.training.pg3_feasible_mode_v1.spec import PREFIX
 from experiments.pg3_feasible_mode_v1.common import OUT
 def launch(kind,arm=None):
- prep=OUT/"preparation001";cal=read(prep/"CALIBRATION.json")
+ prep=OUT/"preparation002";cal=read(prep/"CALIBRATION.json")
  if kind=="overfit128":method=PREFIX+"_route";rid="A42_PG3_Overfit128_run001";selected=cal["overfit_ids"]
  else:
   require(arm in "ABCD" and len(arm)==1,"PG3_PILOT_ARM")

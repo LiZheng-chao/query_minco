@@ -17,7 +17,7 @@ from query_minco.training.pg3_feasible_mode_v1.gradients import audit,calibrate
 from experiments.pg3_feasible_mode_v1.common import OUT,model_from
 
 def run():
- out=OUT/"preparation001";out.mkdir(parents=True,exist_ok=False)
+ out=OUT/"preparation002";out.mkdir(parents=True,exist_ok=False)
  require(not subprocess.check_output(["git","status","--porcelain","--untracked-files=all"],text=True).strip(),"PG3_CLEAN_CPU0")
  configure(dict(threads=1,seed=42,device="cpu"))
  old=ROOT/"research_outputs/pg2_guided_v2/runs/A42_C1_V2_CleanCPU0_run003"
@@ -67,7 +67,7 @@ def run():
  write(out/"CALIBRATION.json",cal);write(out/"CPU0_RECORDS.json",records);write(out/"TRAINING_TASK_SELECTION.json",dict(all_screened=candidates,selected=selected,rule="first two initial-deep unmatched M1 and M4 from fixed first8 FrozenOrder; fallback first M-group if fewer; no dev selection"))
  write(out/"TEACHER_LABELS.json",bank.cache)
  require(state_sha(model)==before==init["weights_sha256"],"PG3_CPU0_WEIGHT_UPDATE")
- gate=dict(schema="pg3_cpu0_v1",passed=True,code=binding["code"],bindings=ref,weights_before=before,weights_after=state_sha(model),optimizer_created=False,optimizer_steps=0,audit_batches=8,unique_tasks=len(seen),test_log=dict(path=str(OUT/"implementation001/TESTS_final.log"),sha256=sha(OUT/"implementation001/TESTS_final.log")),calibration=dict(path=str(out/"CALIBRATION.json"),sha256=sha(out/"CALIBRATION.json")))
+ gate=dict(schema="pg3_cpu0_v1",passed=True,code=binding["code"],bindings=ref,weights_before=before,weights_after=state_sha(model),optimizer_created=False,optimizer_steps=0,audit_batches=8,unique_tasks=len(seen),test_log=dict(path=str(OUT/"implementation001/TESTS_final002.log"),sha256=sha(OUT/"implementation001/TESTS_final002.log")),calibration=dict(path=str(out/"CALIBRATION.json"),sha256=sha(out/"CALIBRATION.json")))
  write(out/"CPU0.json",gate);write(out/"RUN_SEAL.json",dict(files={str(p.relative_to(out)):sha(p) for p in out.rglob("*") if p.is_file()},purpose="PG3_CPU0_NO_UPDATES"))
  print("PG3_CPU0_DONE",gate,"OVERFIT_TASKS",selected,flush=True)
 if __name__=="__main__":run()
