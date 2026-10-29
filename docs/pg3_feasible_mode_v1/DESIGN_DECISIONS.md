@@ -1,0 +1,10 @@
+# Contract conflicts and explicit resolutions
+Base HEAD:2263966ddb531b876dd3775c6461cef8eae4253e; independent branch research/pg3-feasible-mode-v1.
+
+1. The 21D interface is exactly two inner 3D waypoints plus tailP/V/A and total/split times. No architecture changes or extra Head are justified initially. Frozen384 has672 Teachers; all audited geometric/terminal labels are representable and Teacher T lies [2.0402134,2.1869435]s within decoder(.8,2.2).
+2. Contract T07's request for direct L_mode to have nonzero coefficient gradients conflicts with section3.4's upstream W/P/V formula. The formula is retained; coefficient gradient is structurally None. Actual raw/waypoint/network gradients are tested; bottleneck/corridor supply differentiable MINCO c/T paths. No fabricated sibling gradient is added.
+3. Section5 N_valid and section9 no mode/anchor-count bias are reconciled with hierarchical normalization: control-point*plane mean within each supervised Query, Query mean per sample, batch mean. The basic halfspace Huber is unchanged.
+4. Passage labels are geometric AABB-face signatures derived from certified Teacher crossings and authenticated geometry; not homotopy classes. Sidecar teacher IDs/count are never treated as topology. Optional diversity only applies to independently verified different faces and is disabled in the primary four-arm training.
+5. Lateral quality is requested by the task but absent from the boxed three-part Q formula. Implement it as an explicit separately weighted conditional term, retaining QA/QJ/QT unchanged and independently logged.
+6. User's primary four-arm ablation is used: Safe / +Mode / +Bottleneck+Convex / +ConditionalQuality. Raw-space diagnostics additionally separate bottleneck from convex corridor. Consequently the network C arm is a route bundle and cannot isolate bottleneck vs convex contribution by itself.
+7. Legacy code, source identities, data, original Hungarian, MINCO, hard checker and F3 are untouched. New source binding identifies current PG3 code separately from original C1 lineage; no historical manifest/receipt is rewritten.
