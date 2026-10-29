@@ -10,13 +10,15 @@ from .bottleneck import bottleneck_loss
 from .corridor import penalty
 from .losses import mode_query,conditional_control,diversity
 
-def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities=None):
+def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities=None,assignment_policy=None):
  cfg=bank.cfg;raw=z["raw"];out=z["output"];par=out.parameters;tr=out.trajectory
  zero=(raw.sum()+tr.coeffs.sum()+par.durations.sum())*0
  banks=[bank.get(s,f) for s,f in zip(samples,z["fields"])]
  assignments=[];mode_batches=[];way_batches=[];bneck_batches=[];corr_batches=[];route_records=[];qmode=[];qbn=[];qcor=[]
  for b,teachers in enumerate(banks):
   ass=assign(par.inner_pts[b],par.tail_pva[b,:,0],z["base"]["matches"][b],z["labels"]["passed"][b],teachers["teachers"],step,cfg["capacity"],preferred.get(b) if preferred else None,fixed_priorities.get(samples[b].sample_id) if fixed_priorities is not None else None)
+  if assignment_policy is not None:
+   ass=assignment_policy.choose(samples[b].sample_id,par.inner_pts[b],par.tail_pva[b,:,0],z["base"]["matches"][b],z["labels"]["passed"][b],teachers["teachers"],tr.coeffs[b],par.durations[b],z["safe"]["signed_samples"][b],step,cfg["capacity"])
   assignments.append(ass);ml=[];wl=[];bl=[];cl=[];mq=[zero]*6;bq=[zero]*6;cq=[zero]*6;record=[]
   for q,m in enumerate(ass["route_teacher_id"]):
    row=dict(query=q,teacher=m,reason=ass["reasons"][q])
@@ -51,6 +53,6 @@ def augment(z,samples,bank,method,weights,step=0,preferred=None,fixed_priorities
   per_query=dict(mode=torch.stack(qmode),bottleneck=torch.stack(qbn),convex_corridor=torch.stack(qcor),**qd["per_query"]),
   weights=ew,method=method,recipe=cfg)
 
-def forward(model,samples,geo,method,pg2_weights,weights,bank=None,context=None,step=0,fixed_priorities=None):
+def forward(model,samples,geo,method,pg2_weights,weights,bank=None,context=None,step=0,fixed_priorities=None,assignment_policy=None):
  z=pg2_forward(model,samples,geo,PG2_PREFIX+"safe_v1",context,pg2_weights)
- return augment(z,samples,bank or TeacherBank(recipe()),method,weights,step,fixed_priorities=fixed_priorities)
+ return augment(z,samples,bank or TeacherBank(recipe()),method,weights,step,fixed_priorities=fixed_priorities,assignment_policy=assignment_policy)
