@@ -20,7 +20,7 @@ from query_minco.inference.identity import state_sha
 from experiments.pg3_feasible_mode_v1.common import OUT,model_from
 R=OUT/"learnability_repair001"
 def prepare():
- p=R/"preparation";p.mkdir(exist_ok=False)
+ p=R/"preparation002";p.mkdir(exist_ok=False)
  require(not subprocess.check_output(["git","status","--porcelain"],text=True).strip(),"PG3_REPAIR_CLEAN")
  old=read(OUT/"preparation002/CALIBRATION.json");b=read(artifact(old["bindings"]))
  b["code"]=dict(git_commit=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),files=source_files(),allow_uncommitted_sources=False)
@@ -40,15 +40,15 @@ def prepare():
   zz=z if arm=="A" else forward(model,samples,geo,PREFIX+"_route",old["old_weights"],old["new"]["weights"],bank,ctx,0,fixed_priorities=priority)
   rec,_,_=audit(model,zz,details=True);require(rec["physical_imitation_ratio"]<=10,"PG3_REPAIR_INITIAL_GUARD");records[arm]=rec
  require(before==state_sha(model),"PG3_REPAIR_CPU0_UPDATED")
- cal=dict(bindings=binding,code=b["code"],weights_before=before,weights_after=state_sha(model),optimizer_created=False,optimizer_steps=0,old_weights=old["old_weights"],new_weights=old["new"]["weights"],ids=old["overfit_ids"],fixed_priority=priority,arms=records,passed=True)
+ cal=dict(bindings=binding,code=read(artifact(binding))["code"],weights_before=before,weights_after=state_sha(model),optimizer_created=False,optimizer_steps=0,old_weights=old["old_weights"],new_weights=old["new"]["weights"],ids=old["overfit_ids"],fixed_priority=priority,arms=records,passed=True)
  write(p/"CPU0.json",cal);write(p/"RUN_SEAL.json",dict(files={str(x.relative_to(p)):sha(x) for x in p.rglob("*") if x.is_file()}))
  print("REPAIR_CPU0",priority,flush=True)
 def run(arm):
  require(arm in ("A","B"),"NO_UNSUPPORTED_TASK_GATE")
- cal=read(R/"preparation/CPU0.json");verify_code(cal["code"]);ds,geo,init,qual=qualify_bindings(cal["bindings"],42)
+ cal=read(R/"preparation002/CPU0.json");verify_code(cal["code"]);ds,geo,init,qual=qualify_bindings(cal["bindings"],42)
  rid="A42_PG3_Learn_"+("Rotation" if arm=="A" else "Fixed")+"_CPU32_run001";rp=R/"runs"/rid;rp.mkdir(parents=True,exist_ok=False)
  spec=dict(schema="pg3_repair_cpu32_v1",method_id=PREFIX+("_learn_rotation_v1" if arm=="A" else "_learn_fixed_v1"),run_id=rid,
-  source=cal["code"],cpu0=dict(path=str(R/"preparation/CPU0.json"),sha256=sha(R/"preparation/CPU0.json")),bindings=cal["bindings"],
+  source=cal["code"],cpu0=dict(path=str(R/"preparation002/CPU0.json"),sha256=sha(R/"preparation002/CPU0.json")),bindings=cal["bindings"],
   initialization=init,selected_ids=cal["ids"],fixed_priority=cal["fixed_priority"],arm=arm,seed=42,device="cpu",precision="FP32",threads=1,batch_size=8,
   max_updates=32,checkpoint_steps=[0,8,16,32],schedule="original_cosine_2e-5_1e-6_32",optimizer=dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),
   old_weights=cal["old_weights"],new_weights=cal["new_weights"],task_strategy="UNCHANGED_PG2_DISCRETE_BLOCK_MASK",quality_enabled=False,ranking=False,
