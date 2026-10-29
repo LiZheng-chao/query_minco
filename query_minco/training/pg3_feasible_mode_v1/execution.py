@@ -7,7 +7,8 @@ from query_minco.training.io import read,write,sha,digest,artifact,require
 from query_minco.training.run_spec import ROOT,verify_code,source_files
 from query_minco.training.initialization import configure,head_rows,rows_unchanged
 from query_minco.training.pg1.spec import qualify_bindings,lr_at
-from query_minco.training.pg1.state_io import atomic_json,save_commit,presets
+from query_minco.training.pg1.state_io import atomic_json,presets
+from .state_io import save_commit,lr_at as pg3_lr_at
 from query_minco.training.pilot_evaluation import metric_alarm
 from query_minco.training.pg1_v2_r12.evaluation import evaluate
 from query_minco.models import QueryMincoPlanner
@@ -70,7 +71,7 @@ def run(spec_path,auth_path):
  configure(dict(seed=42,threads=1,device="cpu"))
  model=QueryMincoPlanner();model.load_state_dict(torch.load(artifact(init["checkpoint"]),map_location="cpu",weights_only=True)["state_dict"],strict=True)
  require(state_sha(model)==init["weights_sha256"],"PG3_INITIAL_WEIGHTS")
- opt=torch.optim.AdamW(model.parameters(),lr=2e-5,betas=(.9,.999),eps=1e-8,weight_decay=0.)
+ opt=torch.optim.AdamW(model.parameters(),lr=pg3_lr_at(s["schedule"],0),betas=(.9,.999),eps=1e-8,weight_decay=0.)
  initial=head_rows(model);context=TeacherGuidance();bank=TeacherBank(s["recipe"]);start=time.monotonic();streak=0;history=[];stopping=False;committed=None
  def stop(*args):
   nonlocal stopping
@@ -103,8 +104,8 @@ def run(spec_path,auth_path):
    for n,p in model.named_parameters():
     if n.startswith("trajectory_head.") and p.shape[0]==21:require(not torch.count_nonzero(p.grad[19:21]),"PG3_SCORE_GRAD")
    gradnorm=float(torch.nn.utils.clip_grad_norm_(list(model.parameters()),10.));require(np.isfinite(gradnorm),"PG3_CLIP")
-   lr=lr_at("pg1_pilot32_v1",index) if s["kind"]=="paired32" else 1e-5+.5*(2e-4-1e-5)*(1+np.cos(np.pi*index/127))
-   for group in opt.param_groups:group["lr"]=lr
+   lr=pg3_lr_at(s["schedule"],index)
+   for group in opt.param_groups:group["lr"]=float(lr)
    rec.update(ids=ids,index=index,completed_optimizer_updates=index+1,loss=float(z["loss"].detach()),lr=float(lr),physical_imitation_ratio=ratio,ratio_alarm_streak=streak,global_grad_norm_before_clip=gradnorm,
     matched=z["matched"].tolist(),hard_pass=z["labels"]["passed"].tolist(),goal_pass=z["goal_labels"].tolist(),M=[len(x.teacher_coeffs) for x in samples],regime=[ds.rows[x.sample_id]["regime"] for x in samples])
    arrays=dict(raw=z["raw"].detach().numpy(),coeffs=z["output"].trajectory.coeffs.detach().numpy(),durations=z["output"].parameters.durations.detach().numpy(),matched=z["matched"].numpy())

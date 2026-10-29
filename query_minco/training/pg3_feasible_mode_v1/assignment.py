@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from scipy.optimize import linear_sum_assignment
 from query_minco.training.io import require
-def assign(inner,tail,matches,hard_pass,teachers,step=0,capacity=2,preferred=None):
+def assign(inner,tail,matches,hard_pass,teachers,step=0,capacity=2,preferred=None,fixed_priority=None):
  require(inner.shape==(6,2,3) and tail.shape==(6,3) and hard_pass.shape==(6,),"PG3_ASSIGN_SHAPE")
  require(capacity>=1 and bool(torch.isfinite(inner).all()) and bool(torch.isfinite(tail).all()),"PG3_ASSIGN_FINITE")
  M=len(teachers);route=[-1]*6;occupancy=[0]*M;matched=[False]*6;reasons=["NOT_SELECTED"]*6
@@ -19,7 +19,11 @@ def assign(inner,tail,matches,hard_pass,teachers,step=0,capacity=2,preferred=Non
  if not M:
   return dict(route_teacher_id=route,selected=[],matched=matched,occupancy=occupancy,reasons=["NO_TEACHER_UNKNOWN"]*6,teacher_count=0,assignment_requires_grad=False)
  if bad:
-  offset=int(step)%len(bad);bad=bad[offset:]+bad[:offset]
+  if fixed_priority is not None:
+   require(len(set(fixed_priority))==len(fixed_priority) and all(type(q) is int and 0<=q<6 for q in fixed_priority),"PG3_FIXED_PRIORITY")
+   bad=[q for q in fixed_priority if q in bad]+[q for q in bad if q not in fixed_priority]
+  else:
+   offset=int(step)%len(bad);bad=bad[offset:]+bad[:offset]
   if preferred is not None and preferred in bad:bad=[preferred]+[q for q in bad if q!=preferred]
  selected=bad[:len(slots)]
  if selected:
