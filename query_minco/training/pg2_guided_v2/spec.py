@@ -38,12 +38,16 @@ def score_rows_allowed(method):
  if method==BASELINE:return ()
  cfg=recipe(method)
  return (19,20) if cfg["ranking"]=="rank_pg2_feasible_goal_quality" else ((19,) if cfg["ranking"]=="rank_yopo_style" else ())
-def draft(binding,code,calibration,method,run_id):
+def draft(binding,code,calibration,method,run_id,device="cuda"):
  require(method in METHODS or method==BASELINE,"V2_DRAFT_METHOD")
+ require(device in ("cpu","cuda"),"V2_DEVICE")
+ resources=(dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,
+  threads=1,disk_cap_gib=4) if device=="cpu" else
+  dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,gpu_mib=6144,disk_cap_gib=4))
  return dict(schema="pg2_v2_pilot32_draft_v1",method=method,run_id=run_id,bindings=binding,code=code,
-  calibration=calibration,seed=42,profile="pg1_pilot32_v1",batch_size=8,precision="FP32",device="cuda",
+  calibration=calibration,seed=42,profile="pg1_pilot32_v1",batch_size=8,precision="FP32",device=device,
   optimizer=dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),
   schedule="cosine_2e-5_to_1e-6_endpoint_inclusive",updates=32,checkpoints=[0,8,16,32],
   score_contract=dict(component_id="pg2_v2_score_row_policy_v1",allowed_rows=list(score_rows_allowed(method))),
-  resources=dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,gpu_mib=6144,disk_cap_gib=4),
+  resources=resources,
   status="NOT_QUALIFIED",approved=False,authorization=None,preflight=None,cpu0=None,output_root=None)

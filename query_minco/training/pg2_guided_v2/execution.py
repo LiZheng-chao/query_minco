@@ -48,7 +48,7 @@ def preflight_identity(s):
 def validate_training_spec(s,authorization):
  require(s.get("schema")=="pg2_v2_pilot32_spec_v1" and s.get("status")=="READY_FOR_MANUAL_PILOT","V2_DRAFT_NOT_RUNNABLE")
  from .spec import draft
- expected=draft(s["bindings"],s["code"],s["calibration"],s["method"],s["run_id"])
+ expected=draft(s["bindings"],s["code"],s["calibration"],s["method"],s["run_id"],device=s["device"])
  expected.update(schema="pg2_v2_pilot32_spec_v1",status="READY_FOR_MANUAL_PILOT",preflight=s["preflight"],cpu0=s["cpu0"],output_root=s["output_root"],initialization=s["initialization"])
  require(s==expected,"V2_EXACT_SPEC_FIELDS")
  require((s["method"] in METHODS or s["method"]==BASELINE) and s["updates"]==32 and s["checkpoints"]==[0,8,16,32] and s["seed"]==42 and s["batch_size"]==8 and s["precision"]=="FP32","V2_FIXED_PILOT")
@@ -58,7 +58,6 @@ def validate_training_spec(s,authorization):
  verify_code(s["code"])
  require(authorization==dict(schema="pg2_v2_single_run_authorization_v1",run_id=s["run_id"],spec_sha256=digest(s),
   max_optimizer_updates=32,approved=True,authorized_by=authorization.get("authorized_by")) and isinstance(authorization["authorized_by"],str) and bool(authorization["authorized_by"].strip()),"V2_SCOPE_AUTH")
- # Receipts must be produced on the actual clean deployment, never CPU0 -> CUDA promotion.
  pf=read(artifact(s["preflight"]))
  require(pf.get("schema")=="pg2_v2_preflight_v1" and pf.get("optimizer_created") is False and pf.get("deterministic_repeat") is True and pf.get("passed") is True and pf.get("device")==s["device"] and pf.get("planning_spec_identity")==preflight_identity(s) and pf.get("optimizer_steps")==0,"V2_DEPLOYMENT_PREFLIGHT")
  require(set(pf["files"])=={"PREFLIGHT_ARRAYS.npz","QUALIFICATION.json"} and pf.get("code")==s["code"] and pf.get("bindings")==s["bindings"] and pf.get("initial_weights_sha256")==s["initialization"]["weights_sha256"],"V2_PREFLIGHT_COMPLETE")
@@ -71,7 +70,10 @@ def validate_training_spec(s,authorization):
   require(not Path(n).is_absolute() and ".." not in Path(n).parts and sha(cp.parent/n)==h,"V2_CPU0_FILES")
  require(seal["files"].get("CALIBRATION.json")==s["calibration"]["sha256"] and cal.get("unique_tasks")==384 and cal.get("exposures")==768,"V2_FULL_CALIBRATION")
  require(cal["gradient_guard_passed"] is True and cal["code"]==s["code"] and cal["bindings"]==s["bindings"],"V2_CALIBRATION_IDENTITY")
- require(s["resources"]==dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,gpu_mib=6144,disk_cap_gib=4),"V2_RESOURCES")
+ expected_resources=(dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,threads=1,disk_cap_gib=4)
+  if s["device"]=="cpu" else
+  dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,gpu_mib=6144,disk_cap_gib=4))
+ require(s["device"] in ("cpu","cuda") and s["resources"]==expected_resources,"V2_RESOURCES")
  return cal
 
 def resources(s,start,run):
@@ -82,7 +84,10 @@ def resources(s,start,run):
  require(sum(p.stat().st_size for p in run.rglob("*") if p.is_file())<4*1024**3,"V2_DISK")
  if s["device"]=="cuda":
   require(torch.cuda.is_available() and torch.cuda.max_memory_reserved()<=6144*1024**2,"V2_GPU")
- else:require(s["device"]=="cpu" and os.environ.get("CUDA_VISIBLE_DEVICES")=="","V2_CPU")
+ else:
+  require(s["device"]=="cpu" and os.environ.get("CUDA_VISIBLE_DEVICES")=="" and
+   torch.get_num_threads()==1 and s["resources"]["threads"]==1,"V2_CPU")
+
 def _execute(spec_path,authorization_path,owner):
  s=read(spec_path);auth=read(authorization_path);cal=validate_training_spec(s,auth)
  root=(ROOT/"research_outputs/pg2_guided_v2/runs").resolve()
@@ -167,7 +172,10 @@ def preflight(spec_path,output):
   free,total=torch.cuda.mem_get_info();cap=min(6144*1024**2,int(total*.75))
   require(free>=cap+512*1024**2,"V2_GPU_FREE")
   torch.cuda.set_per_process_memory_fraction(max(0,cap-512*1024**2)/total)
- else:require(s["device"]=="cpu" and os.environ.get("CUDA_VISIBLE_DEVICES")=="","V2_PREFLIGHT_CPU")
+ else:
+  require(s["device"]=="cpu" and os.environ.get("CUDA_VISIBLE_DEVICES")=="" and
+   torch.get_num_threads()==1 and s["resources"]==dict(wall_s=3600,rss_cap_mib=4096,
+   min_available_mib=3072,threads=1,disk_cap_gib=4),"V2_PREFLIGHT_CPU")
  model=QueryMincoPlanner();model.load_state_dict(torch.load(str(artifact(init["checkpoint"])),map_location="cpu",weights_only=True)["state_dict"],strict=True);model.to(s["device"]);model.train()
  before=state_sha(model);ids,_=geo.orders[42].batch(0);samples=ds.load(ids);arrays={}
  for repeat in (0,1):

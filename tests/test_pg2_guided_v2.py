@@ -24,6 +24,19 @@ def fake_model():
  return SimpleNamespace(named_parameters=lambda:list(data.items()),parameters=lambda:list(data.values())),data
 class V2(unittest.TestCase):
  def setUp(self):torch.set_num_threads(1)
+ def test_cpu_and_cuda_pilot_drafts_are_explicit_and_isolated(self):
+  args=({}, {}, {}, BASELINE, "A42_test_device_contract")
+  gpu=draft(*args)
+  self.assertEqual(gpu["device"],"cuda")
+  self.assertEqual(gpu["resources"],dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,gpu_mib=6144,disk_cap_gib=4))
+  cpu=draft(*args,device="cpu")
+  self.assertEqual(cpu["device"],"cpu")
+  self.assertEqual(cpu["resources"],dict(wall_s=3600,rss_cap_mib=4096,min_available_mib=3072,threads=1,disk_cap_gib=4))
+  for spec in (cpu,gpu):
+   self.assertEqual((spec["batch_size"],spec["precision"],spec["updates"],spec["checkpoints"]),(8,"FP32",32,[0,8,16,32]))
+   self.assertEqual(spec["optimizer"],gpu["optimizer"])
+   self.assertEqual(spec["schedule"],gpu["schedule"])
+  with self.assertRaises(ValueError):draft(*args,device="cuda:0")
  def test_new_method_ids_and_constants(self):
   self.assertEqual(len(METHODS),6)
   for m in METHODS:
