@@ -1,10 +1,62 @@
 {
-  "experiment_id": "pg3_v2_no_corridor",
-  "method_id": "query_minco_pg3_v2_no_corridor_v1",
-  "seed": 42, "threads": 1, "batch_size": 8, "updates": 128,
+  "schema": "pg3_v2_1_preregistered_calibration_v1",
+  "method_id": "query_minco_pg3_v2_no_corridor_v2_1",
+  "compose_id": "pg3_v2_1_loss_compose_v1",
+  "seed": 42,
+  "threads": 1,
+  "batch_size": 8,
   "calibration_batches": 8,
-  "section": 0.10, "safe_keep": 0.05, "full_stop": 0.01,
-  "convex_corridor": false, "ranking": false, "projection": false,
-  "control": false, "development_weight_search": false,
-  "training_status": "NOT_RUN"
+  "stop_mode": "replace_full_stop",
+  "budgets": {
+    "mode": 0.5,
+    "geom": 0.3,
+    "stop": 0.1,
+    "keep": 0.05,
+    "div": 0.05
+  },
+  "cpu0_limit": 10.0,
+  "increment_limit": 2.0,
+  "minimum_lambda": 1e-12,
+  "minimum_effective_ratio": 0.0001,
+  "section": {
+    "d_safe_m": 0.15,
+    "delta_extra_m": 0.0,
+    "sigma_m": 0.15,
+    "vx_min_mps": 0.0001,
+    "join_epsilon_s": 1e-06
+  },
+  "stop": {
+    "braking_acceleration_mps2": 4.0,
+    "tau_m": 0.05,
+    "d_ref_m": 0.15
+  },
+  "keep_probe": {
+    "status": "PROBE_ONLY",
+    "bias_indices": [
+      1,
+      4,
+      7
+    ],
+    "bias_offset": 0.12
+  },
+  "keep_active_max_ratio": 0.05,
+  "shadow_step": {
+    "status": "PROBE_ONLY",
+    "batch_selection": "first of fixed training batches 0..7 with active dangerous routed geometry; no Development",
+    "lr": 2e-05,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "weight_decay": 0.0,
+    "clip_norm": 10.0,
+    "minimum_gap_improvement_m": 1e-07
+  },
+  "convex_corridor": false,
+  "teacher_corridor": false,
+  "ranking": false,
+  "control": false,
+  "projection": false,
+  "training": "NOT_RUN"
 }

@@ -283,3 +283,179 @@ class FrozenSafeReference:
         return (torch.cat(per_sample).mean() if per_sample else param.inner_pts.sum()*0), dict(initial_safe_count=sum(counts),
             reference_sha256=self.identity,
             meaning="FROZEN_HARD_SAFE_PARAMETER_TRUST_REGION_NOT_SAFETY_CERTIFICATE")
+
+
+# V2.1 APIs are explicitly separate: the historical V2 functions above are frozen.
+def section_events_v21(c, d, target, scene):
+    """Train only on valid spatial crossings; no teacher-progress gradient fallback."""
+    zero=(c.sum()+d.sum())*0
+    require(c.shape==(3,3,6) and d.shape==(3,) and bool((d>0).all())
+            and bool(torch.isfinite(c).all()) and bool(torch.isfinite(d).all()),"V21_SECTION_CURVE")
+    values=[];events=[];skipped=[]
+    trusted=target.get("certified",False) and target.get("representable",False)
+    for i,label in enumerate(target.get("bottlenecks",[])):
+        reason=None;side=label.get("side")
+        if not trusted:reason="UNTRUSTED_TEACHER"
+        elif not label.get("valid"):reason="INVALID_LABEL"
+        elif side is None or len(side)!=2 or side[0] not in (1,2) or side[1] not in (-1,1):reason="NO_CERTIFIED_SIDE"
+        elif label.get("event_status")!="UNIQUE_FORWARD_CROSSING":reason="TEACHER_CROSSING_AMBIGUOUS"
+        if reason:
+            skipped.append(dict(event=i,box=label.get("box"),reason=reason));continue
+        box=scene["obstacles"][int(label["box"])];axis,sign=side
+        x=float(label["plane_x"])
+        crossing=crossing_events(c.detach().double().cpu().numpy(),d.detach().double().cpu().numpy(),x)
+        e=crossing["selected"]
+        if crossing["status"]!="UNIQUE_FORWARD_CROSSING" or len(crossing["events"])!=1:reason="STUDENT_"+crossing["status"]
+        elif e["vx"]<=1e-4:reason="SMALL_VX"
+        elif not 1e-6<e["time_s"]<float(d.detach().sum())-1e-6:reason="ENDPOINT_CROSSING"
+        elif any(abs(e["time_s"]-float(t))<=1e-6 for t in d.detach().cumsum(0)[:-1]):reason="SEGMENT_JOIN"
+        if reason:
+            skipped.append(dict(event=i,box=label["box"],reason=reason));continue
+        pos,vel=_at_progress_with_velocity(c,d,e["time_s"]/float(d.detach().sum()))
+        if float(vel[0].detach())<=1e-4:
+            skipped.append(dict(event=i,box=label["box"],reason="SMALL_EVALUATED_VX"));continue
+        point=pos+vel*(-(pos[0]-x)/vel[0].detach())
+        bound=float(box["max"][axis])+.15 if sign>0 else float(box["min"][axis])-.15
+        gap=sign*(point[axis]-bound)
+        values.append(F.relu(-gap/.15).square())
+        events.append(dict(event=i,box=label["box"],axis=axis,sign=sign,plane_x=x,
+                           time_s=e["time_s"],vx=e["vx"],gap_m=float(gap.detach()),
+                           deficit_m=float((-gap).relu().detach()),source="LOCAL_IMPLICIT_SECTION_PROXY"))
+    return (torch.stack(values).mean() if values else zero),dict(valid=bool(values),count=len(values),
+        event_denominator=len(values),discarded_count=len(skipped),events=events,skipped=skipped,
+        delta_extra_m=0.,sigma_section_m=.15,d_safe_m=.15)
+
+
+def full_stopping_risk_v21(positions,velocities,weights,fields):
+    """[tau*softplus((.15+vc^2/8-SDF)/tau)/d_ref]^2; tau=.05m,d_ref=.15m."""
+    return (.05/.15)**2*full_stopping_risk(positions,velocities,weights,fields,
+        braking_acceleration=4.,clearance=.15,temperature=.05)
+
+
+class UniqueSampleFairAssignment:
+    """One committed exposure per successful update and unique sample ID."""
+    SCHEMA="pg3_v21_unique_exposure_v1"
+    def __init__(self):
+        self.history={};self.last_step=-1;self.pending={};self.pending_step=None
+        self.batch_ids=[];self.seen={}
+
+    def begin_step(self,step,batch_sample_ids):
+        require(type(step) is int and step==self.last_step+1 and self.pending_step is None,"V21_BEGIN_SEQUENCE")
+        require(bool(batch_sample_ids) and all(isinstance(s,str) and s for s in batch_sample_ids),"V21_BATCH_IDS")
+        self.pending_step=step;self.batch_ids=list(batch_sample_ids);self.seen={}
+
+    def validate_duplicate(self,sid,matching_digest,assignment_digest):
+        require(sid in self.pending and self.pending[sid]["matching_digest"]==matching_digest
+                and self.pending[sid]["assignment_digest"]==assignment_digest,"DUPLICATE_SAMPLE_CONFLICT")
+
+    def choose_once(self,sid,inner,tail,matches,hard_pass,teachers,*,authenticated_digest,capacity=2):
+        require(self.pending_step is not None and sid in self.batch_ids and capacity==2,"V21_CHOOSE_TRANSACTION")
+        require(isinstance(authenticated_digest,str) and len(authenticated_digest)==64,"V21_AUTHENTICATED_INPUT_DIGEST")
+        fingerprint=digest(dict(authenticated=authenticated_digest,inner=tensor_digest(inner,tail),
+            matches={k:[int(x) for x in matches[k]] for k in ("queries","teachers")},
+            hard=hard_pass.detach().tolist(),teachers=teachers))
+        count=self.seen.get(sid,0)+1
+        require(count<=self.batch_ids.count(sid),"V21_TOO_MANY_OCCURRENCES")
+        if sid in self.pending:
+            p=self.pending[sid];self.validate_duplicate(sid,fingerprint,digest(p["decision"]))
+            self.seen[sid]=count;return copy.deepcopy(p["decision"])
+        state=copy.deepcopy(self.history.get(sid,[dict(eligible=0,direct=0,wait=0) for _ in range(6)]))
+        matched={int(q) for q in matches["queries"]}
+        bad=[q for q in range(6) if q not in matched and not bool(hard_pass[q].detach())]
+        priority=sorted(bad,key=lambda q:(state[q]["direct"],-state[q]["wait"],q))
+        result=assign(inner,tail,matches,hard_pass,teachers,self.pending_step,2,fixed_priority=priority)
+        result.update(fair_priority=priority,exposure_before=state,scheduler=self.SCHEMA)
+        self.pending[sid]=dict(matching_digest=fingerprint,assignment_digest=digest(result),decision=copy.deepcopy(result),eligible=bad)
+        self.seen[sid]=count
+        return result
+
+    def commit_after_optimizer_step(self,step,*,optimizer_succeeded=False,finite=False,scores_unchanged=False):
+        require(optimizer_succeeded is True and finite is True and scores_unchanged is True,"V21_OPTIMIZER_NOT_CONFIRMED")
+        require(self.pending_step==step==self.last_step+1,"V21_COMMIT_SEQUENCE")
+        require(all(self.seen.get(sid,0)==self.batch_ids.count(sid) for sid in set(self.batch_ids)),"V21_INCOMPLETE_BATCH")
+        decisions=copy.deepcopy(self.pending)
+        for sid,p in self.pending.items():
+            state=self.history.setdefault(sid,[dict(eligible=0,direct=0,wait=0) for _ in range(6)])
+            PerSampleFairAssignment._advance(state,p["decision"]["selected"],p["eligible"])
+        receipt=dict(step=step,batch_occurrences=len(self.batch_ids),unique_samples=len(self.pending),decisions=decisions)
+        self.last_step=step;self.pending={};self.pending_step=None;self.batch_ids=[];self.seen={}
+        receipt["state_sha256"]=digest(self.state_dict());return receipt
+
+    def rollback(self,step):
+        require(self.pending_step is None or self.pending_step==step,"V21_ROLLBACK_STEP")
+        self.pending={};self.pending_step=None;self.batch_ids=[];self.seen={}
+
+    def state_dict(self):
+        require(self.pending_step is None and not self.pending,"V21_PENDING_NOT_CHECKPOINTABLE")
+        return copy.deepcopy(dict(schema=self.SCHEMA,last_step=self.last_step,history=self.history))
+
+    def load_state_dict(self,state):
+        require(self.pending_step is None and state.get("schema")==self.SCHEMA,"V21_STATE_SCHEMA")
+        # Reuse the historical value validation without accepting its semantics/schema.
+        validator=PerSampleFairAssignment()
+        validator.load_state_dict(dict(state,schema="pg3_v2_fair_v1"))
+        require(all(r["eligible"]<=state["last_step"]+1 for rows in state["history"].values() for r in rows),"V21_STATE_EXPOSURE_BOUND")
+        self.history=copy.deepcopy(state["history"]);self.last_step=state["last_step"]
+
+
+def save_v21_checkpoint(path,model,optimizer,assignment,spec):
+    """Exclusive atomic publication binds model, optimizer, exposure, RNG and spec."""
+    import os,uuid
+    from pathlib import Path
+    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+    state=assignment.state_dict()  # rejects pending before creating any file
+    temporary=path.with_name("."+path.name+"."+uuid.uuid4().hex)
+    with temporary.open("xb") as f:
+        torch.save(dict(model=model.state_dict(),optimizer=optimizer.state_dict(),exposure=state,
+            model_sha256=state_sha(model),spec=spec,spec_sha256=digest(spec),torch_rng=torch.get_rng_state()),f)
+        f.flush();os.fsync(f.fileno())
+    try:os.link(temporary,path)
+    finally:temporary.unlink()
+
+
+def load_v21_checkpoint(path,model,optimizer,assignment,spec):
+    blob=torch.load(path,map_location="cpu",weights_only=True)
+    require(blob["spec"]==spec and blob["spec_sha256"]==digest(spec),"V21_RESUME_IDENTITY")
+    model.load_state_dict(blob["model"],strict=True)
+    require(state_sha(model)==blob["model_sha256"],"V21_RESUME_MODEL")
+    optimizer.load_state_dict(blob["optimizer"]);assignment.load_state_dict(blob["exposure"])
+    torch.set_rng_state(blob["torch_rng"])
+    return blob
+
+
+def optimizer_step_v21(model,optimizer,assignment,step,score_reference):
+    """Commit only after all checks and successful step; exceptions reject the run."""
+    from query_minco.training.initialization import rows_unchanged
+    try:
+        require(all(p.grad is None or bool(torch.isfinite(p.grad).all()) for p in model.parameters()),"V21_NONFINITE_GRADIENT")
+        require(rows_unchanged(model,score_reference),"V21_PRESTEP_SCORE_DRIFT")
+        for name,p in model.named_parameters():
+            if name.startswith("trajectory_head.") and p.shape[0]==21 and p.grad is not None:
+                require(not torch.count_nonzero(p.grad[19:21]),"V21_SCORE_GRADIENT")
+        optimizer.step()
+        finite=all(bool(torch.isfinite(p).all()) for p in model.parameters())
+        scores=rows_unchanged(model,score_reference)
+        require(finite and scores,"V21_POSTSTEP_PARAMETER_GUARD")
+        return assignment.commit_after_optimizer_step(step,optimizer_succeeded=True,finite=finite,scores_unchanged=scores)
+    except BaseException:
+        assignment.rollback(step)
+        # Parameters/optimizer are NOT claimed rolled back. Resume requires a validated checkpoint.
+        raise
+
+
+class FrozenSafeReferenceV21(FrozenSafeReference):
+    """Same Keep mathematics and masks; adds per-query drift/activation monitoring."""
+    def loss(self,z,samples,fields):
+        value,info=super().loss(z,samples,fields);p=z["output"].parameters;rows=[]
+        with torch.no_grad():
+            for b,(sample,field) in enumerate(zip(samples,fields)):
+                ref=self._reference(sample,field)
+                way=(p.inner_pts[b]-ref["inner"].to(p.inner_pts)).norm(dim=-1)
+                end=(p.tail_pva[b,:,0]-ref["tail"].to(p.tail_pva)[:,0]).norm(dim=-1)
+                vel=(p.tail_pva[b,:,1]-ref["tail"].to(p.tail_pva)[:,1]).norm(dim=-1)
+                times=(p.durations[b]-ref["durations"].to(p.durations)).abs().sum(-1)
+                for q in range(6):
+                    safe=bool(ref["safe"][q]);active=safe and (bool((way[q]>self.wtol).any()) or float(end[q])>self.wtol or float(vel[q])>self.vtol or float(times[q])>self.ttol)
+                    rows.append(dict(sample_id=sample.sample_id,query=q,initial_safe=safe,active=active,
+                        waypoint_m=way[q].tolist(),endpoint_m=float(end[q]),velocity_mps=float(vel[q]),duration_l1_s=float(times[q])))
+        return value,dict(info,drift=rows,active_initial_safe_queries=sum(r["active"] for r in rows))

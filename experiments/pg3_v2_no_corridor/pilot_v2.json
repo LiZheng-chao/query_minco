@@ -1,0 +1,10 @@
+{
+  "experiment_id": "pg3_v2_no_corridor",
+  "method_id": "query_minco_pg3_v2_no_corridor_v1",
+  "seed": 42, "threads": 1, "batch_size": 8, "updates": 128,
+  "calibration_batches": 8,
+  "section": 0.10, "safe_keep": 0.05, "full_stop": 0.01,
+  "convex_corridor": false, "ranking": false, "projection": false,
+  "control": false, "development_weight_search": false,
+  "training_status": "NOT_RUN"
+}

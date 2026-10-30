@@ -18,7 +18,7 @@ from query_minco.training.pilot_evaluation import metric_alarm
 from experiments.pg3_feasible_mode_v1.fulltrain128_evaluation import evaluate_set,inference_measure
 OUT=ROOT/"research_outputs/pg3_v2_no_corridor"
 OLD=ROOT/"research_outputs/pg3_feasible_mode_v1/fulltrain128_001/preparation/CPU0.json"
-CONFIG=Path(__file__).with_name("pilot.json")
+CONFIG=Path(__file__).with_name("pilot_v2.json")
 PREP=OUT/"_preparation"/"cpu0_002"
 
 def sources():
@@ -184,7 +184,7 @@ def compare():
     result["sources"]={arm:dict(path=str(p/"RUN_SPEC.json"),sha256=sha(p/"RUN_SPEC.json")) for arm,p in arms.items()}
     folder=OUT/"summary";folder.mkdir(exist_ok=True);write(folder/"PAIRED_AD.json",result)
 
-def main():
+def legacy_main():
     global PREP
     p=argparse.ArgumentParser();p.add_argument("action",choices=["prepare","A","D","compare"]);p.add_argument("--authorization",type=Path);p.add_argument("--preparation-id",default="cpu0_002");a=p.parse_args()
     require(a.preparation_id and all(c.isalnum() or c in "_-" for c in a.preparation_id),"V2_PREPARATION_ID")
@@ -193,4 +193,11 @@ def main():
     elif a.action=="compare":compare()
     else:
         require(a.authorization is not None,"V2_AUTHORIZATION_FILE_REQUIRED");train(a.action,a.authorization)
+def main():
+    import sys
+    if "--legacy-v2" in sys.argv:
+        sys.argv.remove("--legacy-v2");legacy_main()
+    else:
+        from .qualification_v21 import main as v21_main
+        v21_main()
 if __name__=="__main__":main()
