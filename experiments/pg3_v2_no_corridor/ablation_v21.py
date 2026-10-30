@@ -47,10 +47,11 @@ def make_spec(template,arm,base,code,purpose='formal'):
     s['bindings']=ref(base/'BINDINGS.json')
     s['ablation']=dict(active=list(ACTIVE[arm]),frozen_weights=FROZEN,semantics='sequential_conditional_increment_v1')
     s['execution']['limit']=128 if purpose=='formal' else 4;s['execution']['purpose']='PG3_V21_ABLATION128' if purpose=='formal' else 'PG3_V21_ABLATION_SHORT4'
-    s['ablation_qualification']=str(base/'QUALIFICATION'/arm/'QUALIFICATION.json')
+    s['ablation_qualification']=str(base/'QUALIFICATION'/arm/'FINAL_QUALIFICATION.json')
     validate_ablation_spec(s);return s
 
 def diagnostic_run(spec,ds,geo,init,cfg,run,pause=None,resume=False):
+    configure(dict(seed=42,threads=1,device='cpu'))
     if not resume:run.mkdir(parents=True,exist_ok=False);write(run/'RUN_SPEC.json',spec)
     e=AblationEngine(model_from(init),spec,cfg);last=restore_checkpoint(run,e) if resume else publish_checkpoint(run,e,dict(completed=0))
     while e.completed<4:
@@ -70,7 +71,13 @@ def prepare(base):
     from query_minco.training.pg1_v2_r12.diagnostics import flat
     pp=list(model.parameters());gd=flat(torch.autograd.grad(zd['loss'],pp,retain_graph=True,allow_unused=True),pp);gk=flat(torch.autograd.grad(zk['loss'],pp,retain_graph=True,allow_unused=True),pp)
     require(torch.equal(zd['loss'],zk['loss']) and torch.equal(gd,gk),'ABL_K_D_NOT_EXACT')
+    cpu,_,_=audit_v21(model,zk,False);step_guard_v21(cpu,cfg);require(cpu['ratios']['R_D']<=10,'ABL_K_CPU0')
     d.assignment.rollback(0);k.assignment.rollback(0)
+    ev=base/'REGRESSION_EVIDENCE';ev.mkdir()
+    import shutil
+    for name in ('GRADIENT_AUDIT_V2_1.json','SHADOW_OPTIMIZER_PROBE.json'):shutil.copyfile(HIST_PREP/name,ev/name)
+    write(ev/'HISTORICAL_EVIDENCE_ORIGIN.json',dict(reused_files={name:ref(HIST_PREP/name) for name in ('GRADIENT_AUDIT_V2_1.json','SHADOW_OPTIMIZER_PROBE.json')},semantics='Unchanged historical train-only calibration and shadow evidence, not new calibration. New CPU0 below actually recomputed with frozen weights.'))
+    write(ev/'CPU0_V2_1.json',dict(status='PASS',threshold=10,increment_limit=2,ratios=cpu['ratios'],weights=FROZEN,code=code,sources=snapshot(),weights_before=state_sha(model),weights_after=state_sha(model),optimizer_steps=0,optimizer_created=False,exposure_unchanged=True,detail=cpu,recalibrated=False))
     write(base/'K_D_EQUIVALENCE.json',dict(status='PASS',scalar_equal=True,parameter_gradient_equal=True,batch_ids=ids))
     results={}
     for arm in ('S','M','G'):
@@ -87,6 +94,7 @@ def prepare(base):
                 require(rec['ratios']['R_D']<=10,'ABL_CPU0_MAIN_GT10');records.append(dict(batch=i,ids=ids,audit=rec,guard=guard))
                 print('ABL_PREFLIGHT',arm,i,rec['ratios'],flush=True)
             write(folder/'GRADIENT_AUDIT.json',dict(records=records,weights=weights_for(arm),recalibrated=False))
+            write(folder/'CPU0.json',dict(status='PASS',code=code,ratios=records[0]['audit']['ratios'],threshold=10,increment_limit=2,optimizer_steps=0,recalibrated=False,disabled_gradients_zero=True))
             su=read(base/'RUN_SPECS'/(arm+'_short_u.json'));sr=read(base/'RUN_SPECS'/(arm+'_short_r.json'))
             _,lastu=diagnostic_run(su,ds,geo,init,cfg,base/'short'/su['run_id'])
             diagnostic_run(sr,ds,geo,init,cfg,base/'short'/sr['run_id'],pause=2)
@@ -98,15 +106,29 @@ def prepare(base):
                 require(all(u[k]==r[k] for k in ('ids','model_sha256','exposure_sha256')),'ABL_SHORT_TRACE')
             write(folder/'SHORT_RESTORE.json',dict(status='PASS',model_optimizer_exposure_rng_fingerprint=state_fingerprint(lastu/'checkpoint.pt'),monitor_equal=True,continuous_updates=4,resumed_updates='2+2',formal_updates=0))
         except Exception: blockers.append(traceback.format_exc())
-        result=dict(arm=arm,status='BLOCKED' if blockers else 'QUALIFIED',blockers=blockers,code=code,sources=snapshot(),formal_spec_sha256=digest(s),weights=weights_for(arm),recalibrated=False,gradient_audit=ref(folder/'GRADIENT_AUDIT.json') if (folder/'GRADIENT_AUDIT.json').exists() else None,short=ref(folder/'SHORT_RESTORE.json') if (folder/'SHORT_RESTORE.json').exists() else None,formal_training='NOT_RUN')
+        result=dict(arm=arm,status='BLOCKED' if blockers else 'PREQUALIFIED',blockers=blockers,code=code,sources=snapshot(),formal_spec_sha256=digest(s),weights=weights_for(arm),recalibrated=False,gradient_audit=ref(folder/'GRADIENT_AUDIT.json') if (folder/'GRADIENT_AUDIT.json').exists() else None,short=ref(folder/'SHORT_RESTORE.json') if (folder/'SHORT_RESTORE.json').exists() else None,formal_training='NOT_RUN')
         write(folder/'QUALIFICATION.json',result);results[arm]=result['status'];print('ABL_QUALIFICATION',arm,result['status'],flush=True)
         write(base/'RUN_SPECS'/(arm+'_AUTHORIZATION_PENDING.json'),dict(approved=False,spec_sha256=digest(s),scope=s['execution']['purpose'],max_updates=128,authorized_by='',resources=s['execution']))
     write(base/'PREPARATION_RESULT.json',dict(arms=results,code=code,formal_training='NOT_RUN',formal_authorization_required=True))
 
+def finalize(base):
+    base=Path(base);tests=read(base/'QUALIFICATION/TEST_REPORT.json');code=source_identity()
+    require(tests['code_commit']==code['git_commit'] and tests['failed']==0 and tests['not_run']==0 and tests['passed']==tests['total'],'ABL_TESTS_NOT_PASSED')
+    statuses={}
+    for arm in ('S','M','G'):
+        folder=base/'QUALIFICATION'/arm;q=read(folder/'QUALIFICATION.json')
+        require(q['code']==code and q['sources']==snapshot(),'ABL_FINAL_SOURCE_DRIFT')
+        if q['status']=='PREQUALIFIED':
+            artifact(q['gradient_audit']);artifact(q['short']);q.update(status='QUALIFIED',tests=ref(base/'QUALIFICATION/TEST_REPORT.json'),cpu0=ref(folder/'CPU0.json'))
+        write(folder/'FINAL_QUALIFICATION.json',q);statuses[arm]=q['status']
+    write(base/'QUALIFICATION/FINAL_RESULT.json',dict(arms=statuses,tests=ref(base/'QUALIFICATION/TEST_REPORT.json'),code=code,formal_training='NOT_RUN'))
+    print('ABL_FINAL_QUALIFICATION',statuses,flush=True)
+
 def run(spec_path,auth_path):
     s=read(spec_path);authorize_ablation(s,read(auth_path));verify_code(s['code']);require(snapshot()==s['sources'],'ABL_SOURCE_DRIFT');reuse_contract()
     q=read(s['ablation_qualification']);require(q['status']=='QUALIFIED' and q['code']==s['code'] and q['sources']==s['sources'] and q['formal_spec_sha256']==digest(s),'ABL_QUALIFICATION_BINDING')
-    artifact(q['gradient_audit']);artifact(q['short'])
+    artifact(q['gradient_audit']);artifact(q['short']);tests=read(artifact(q['tests']));artifact(q['cpu0'])
+    require(tests['code_commit']==s['code']['git_commit'] and tests['failed']==0 and tests['not_run']==0,'ABL_RUNTIME_TESTS')
     prep,(ds,geo,init,qualified,train,dev)=load_context(s['bindings']);hist=read(HISTORY/'runs/A42_D_PG3V21_formal_run001/RUN_SPEC.json');cfg=read(artifact(prep['configuration']))
     for key in ('initialization','order','configuration','pg2_weights','seed','threads','batch_size','updates','optimizer','schedule','precision','device'):require(s[key]==hist[key],'ABL_RUNTIME_CONTRACT:'+key)
     oldbinding=read(artifact(hist['bindings']));newbinding=read(artifact(s['bindings']))
@@ -139,6 +161,7 @@ def run(spec_path,auth_path):
     write(run/'RESULT.json',dict(status=status,accepted_updates=e.completed,model_sha256=state_sha(e.model),wall_s=time.monotonic()-start,error=error))
     require(status=='COMPLETED','ABL_FORMAL_FAILED')
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['prepare','run']);p.add_argument('--output',default='/home/lizheng/query_minco_mainline/research_outputs/pg3_v21_ablation_v1');p.add_argument('--spec');p.add_argument('--authorization');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['prepare','finalize','run']);p.add_argument('--output',default='/home/lizheng/query_minco_mainline/research_outputs/pg3_v21_ablation_v1');p.add_argument('--spec');p.add_argument('--authorization');a=p.parse_args()
     if a.action=='prepare':prepare(a.output)
+    elif a.action=='finalize':finalize(a.output)
     else:run(a.spec,a.authorization)
