@@ -75,7 +75,7 @@ class TeacherBank:
     tail=np.stack([evaluate(cc[-1],dd[-1],k) for k in (0,1,2)])
     flags=representability(inner,tail,dd)
     labels,events=landmarks(cc,dd,scene,self.cfg["bottleneck_range_m"])
-    corridor=build_corridor(cc,dd,scene,empty,self.cfg["corridor_max_depth"])
+    corridor=(build_corridor(cc,dd,scene,empty,self.cfg["corridor_max_depth"]) if self.cfg.get("build_corridor",True) else dict(leaves=[],missing=[],complete=False,status="V2_DISABLED"))
     rows.append(dict(teacher=m,coeffs=cc.tolist(),durations=dd.tolist(),inner=inner.tolist(),tail=tail.tolist(),
      certified=True,check=certificate_diagnostics(check,empty),geometry_bound_semantics="UNBOUNDED_CERTIFIED_EMPTY" if empty else "FINITE_AABB_BOUNDS",representability=flags,representable=flags["positions"] and flags["velocity"],
      bottlenecks=labels,crossing_diagnostics=events,corridor=corridor,
