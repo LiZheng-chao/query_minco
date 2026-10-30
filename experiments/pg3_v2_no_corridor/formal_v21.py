@@ -6,7 +6,7 @@ from query_minco.training.io import read,write,sha,digest,artifact,require
 from query_minco.training.run_spec import ROOT,verify_code
 from query_minco.training.initialization import configure
 from query_minco.inference.identity import state_sha
-from query_minco.training.pg3_v2_no_corridor.executor_v21 import Engine,authorize_spec,publish_checkpoint,inspect_chain,restore_checkpoint
+from query_minco.training.pg3_v2_no_corridor.executor_v21 import Engine,authorize_spec,publish_checkpoint,inspect_chain,restore_checkpoint,validate_frozen_spec
 from experiments.pg3_feasible_mode_v1.fulltrain128 import load_items
 from experiments.pg3_feasible_mode_v1.fulltrain128_evaluation import evaluate_set,inference_measure
 from query_minco.training.pg1_v2_r12.evaluation import evaluate as open8
@@ -41,9 +41,10 @@ def resources(run,start,spec):
     require(os.environ.get("CUDA_VISIBLE_DEVICES")=="" and torch.get_num_threads()==1,"FORMAL_CPU_CONTRACT")
 
 def run(spec_path,authorization,resume=False,pause_after=None):
-    s=read(spec_path);auth=read(authorization);authorize_spec(s,auth);prep,_,q=bundle(s["preparation"])
+    s=read(spec_path);auth=read(authorization);authorize_spec(s,auth);prep,qualified,q=bundle(s["preparation"]);validate_frozen_spec(s,qualified[s["arm"]])
     require(s["sources"]==q["sources"] and s["code"]==q["code"],"FORMAL_SPEC_SOURCE")
     limit=s["execution"]["limit"];root=Path(s["output_root"]);run=root/s["run_id"]
+    require(pause_after is None or (limit==4 and 0<pause_after<limit),"FORMAL_PAUSE_SCOPE")
     if limit==128:
         short=read(root.parent/"short/SHORT_PAIR_RESULT.json");require(short["status"]=="PASS" and short["code_commit"]==s["code"]["git_commit"],"FORMAL_SHORT_PREFLIGHT_FAILED")
     if not resume:run.mkdir(parents=True,exist_ok=False);write(run/"RUN_SPEC.json",s);write(run/"AUTHORIZATION.json",auth)

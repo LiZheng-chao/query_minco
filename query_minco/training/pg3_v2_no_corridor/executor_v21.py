@@ -24,8 +24,14 @@ def validate_protocol(s):
     require(s["arm"] in ("A","D") and s["seed"]==42 and s["threads"]==1 and s["batch_size"]==8 and s["updates"]==128
         and s["device"]=="cpu" and s["precision"]=="FP32" and s["schedule"]==SCHEDULE,"EXEC_PROTOCOL")
     require(s["optimizer"]==dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),"EXEC_OPTIMIZER")
-    require(s["execution"]["limit"] in (4,128) and s["execution"]["checkpoint_every"]==1,"EXEC_LIMIT")
+    e=s["execution"]
+    require(e["limit"] in (4,128) and e["checkpoint_every"]==1 and e["purpose"]==("PG3_V21_SHORT4" if e["limit"]==4 else "PG3_V21_PAIRED128"),"EXEC_LIMIT")
+    require({k:e[k] for k in ("wall_s","rss_mib","min_available_mib","disk_gib")}==dict(wall_s=1800,rss_mib=4096,min_available_mib=3072,disk_gib=4),"EXEC_RESOURCE_PROTOCOL")
     require(s["stop_mode"]==("legacy" if s["arm"]=="A" else "replace_full_stop"),"EXEC_STOP_MODE")
+def validate_frozen_spec(s,reference):
+    for key in ("arm","method_id","initialization","bindings","order","configuration","pg2_weights","weights","stop_mode","seed","threads","batch_size","updates","optimizer","schedule","precision","device"):
+        require(s[key]==reference[key],"EXEC_FROZEN_SPEC_DRIFT:"+key)
+
 def authorize_spec(s,a):
     validate_protocol(s)
     require(a.get("approved") is True and a.get("spec_sha256")==digest(s) and a.get("max_updates")==s["execution"]["limit"]

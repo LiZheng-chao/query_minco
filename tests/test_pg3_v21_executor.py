@@ -14,7 +14,7 @@ def toy():
 
 def spec(m,arm="A"):
     return dict(arm=arm,seed=42,threads=1,batch_size=8,updates=128,device="cpu",precision="FP32",schedule=SCHEDULE,
-        optimizer=dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),execution=dict(limit=4,checkpoint_every=1,purpose="PG3_V21_SHORT4"),
+        optimizer=dict(name="AdamW",betas=[.9,.999],eps=1e-8,weight_decay=0.,clip_norm=10.),execution=dict(limit=4,checkpoint_every=1,purpose="PG3_V21_SHORT4",wall_s=1800,rss_mib=4096,min_available_mib=3072,disk_gib=4),
         stop_mode="legacy" if arm=="A" else "replace_full_stop",initialization=dict(weights_sha256=state_sha(m)),weights={} if arm=="A" else {k:.01 for k in KEYS_V21},
         pg2_weights=dict({k:1. for k in COMPONENTS},**FIXED),method_id="query_minco_pg2_guided_v2_safe_v1")
 CFG=dict(increment_limit=2.,keep_active_max_ratio=.05)
@@ -67,6 +67,12 @@ class ExecutorTests(unittest.TestCase):
         for key,value in (("seed",43),("batch_size",4),("updates",4),("precision","FP16")):
             bad=copy.deepcopy(s);bad[key]=value
             with self.assertRaises(ValueError):validate_protocol(bad)
+    def test_frozen_runtime_weights_and_inputs_rejected(self):
+        m=toy();s=spec(m);s.update(bindings={"id":"frozen"},order={"id":"frozen"},configuration={"id":"frozen"})
+        validate_frozen_spec(s,copy.deepcopy(s))
+        for key in ("weights","pg2_weights","order","initialization"):
+            drift=copy.deepcopy(s);drift[key]={"modified":True}
+            with self.assertRaisesRegex(ValueError,"FROZEN_SPEC_DRIFT"):validate_frozen_spec(drift,s)
     def test_authorization_exact_spec_scope_limit(self):
         m=toy();s=spec(m);a=dict(approved=True,spec_sha256=digest(s),max_updates=4,scope="PG3_V21_SHORT4",authorized_by="test")
         authorize_spec(s,a)
