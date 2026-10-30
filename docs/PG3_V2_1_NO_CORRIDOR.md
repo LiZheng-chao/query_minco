@@ -158,6 +158,15 @@ SHADOW_OPTIMIZER_PROBE, TEST_REPORT, QUALIFICATION, RUN_SPEC_A/D and
 IMPLEMENTATION_RESULT_V2_1. These are exclusive, hashed, final-HEAD-bound files.
 Actual numerical results/status live there; this document does not fabricate them.
 
+The old FullTrain import also reads three AST functions from the historical,
+untracked `research_outputs/pg1_v2_diagnostics_v1/_preparation/diagnose.py`.
+A clean worktree needs an explicit file symlink to that original read-only file.
+Its original absolute path, content SHA and worktree link are preregistered in
+`pilot.json.external_readonly_code` and verified in every source snapshot/RunSpec.
+No historical function or input is copied or edited, and the dependency is not
+silently omitted from the frozen source identity. The first missing-dependency
+attempt is retained as FAILED, not reported as calibration or CPU0 success.
+
 ## Reproduction and authorization boundary
 
 ```bash

@@ -58,5 +58,12 @@
   "ranking": false,
   "control": false,
   "projection": false,
-  "training": "NOT_RUN"
+  "training": "NOT_RUN",
+  "external_readonly_code": [
+    {
+      "path": "/home/lizheng/query_minco_mainline/research_outputs/pg1_v2_diagnostics_v1/_preparation/diagnose.py",
+      "sha256": "17ff2da01717e3d1d6814d9971e2236a5241c39347965b07a89165e895726393",
+      "worktree_link": "research_outputs/pg1_v2_diagnostics_v1/_preparation/diagnose.py"
+    }
+  ]
 }

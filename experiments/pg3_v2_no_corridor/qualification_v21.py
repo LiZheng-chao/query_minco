@@ -22,7 +22,13 @@ def ref(path):return dict(path=str(Path(path).resolve()),sha256=sha(path))
 
 def snapshot():
     tracked=subprocess.check_output(["git","ls-files"],cwd=str(ROOT),text=True).splitlines()
-    return {p:sha(ROOT/p) for p in tracked if (ROOT/p).is_file()}
+    result={p:sha(ROOT/p) for p in tracked if (ROOT/p).is_file()}
+    for external in read(CONFIG)["external_readonly_code"]:
+        target=artifact(dict(path=external["path"],sha256=external["sha256"]))
+        linked=ROOT/external["worktree_link"]
+        require(linked.is_file() and linked.resolve()==target and sha(linked)==external["sha256"],"V21_EXTERNAL_CODE_BINDING")
+        result["@external/"+external["worktree_link"]]=external["sha256"]
+    return result
 
 def validate_config(cfg):
     require(cfg["method_id"]==METHOD_ID_V21 and cfg["compose_id"]==COMPOSE_ID_V21,"V21_METHOD_CONFIG")
