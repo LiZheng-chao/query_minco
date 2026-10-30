@@ -195,6 +195,7 @@ def step_guard_v21(record,config,*,streak=0,keep_previously_active=False):
     require(set(KEYS_V21)<=set(record["components"]),"V21_INCOMPLETE_STEP_AUDIT")
     require(all(math.isfinite(v) for v in record["ratios"].values()),"V21_NONFINITE_STEP_RATIO")
     require(record["ratios"]["R_base"]<=10,"V21_BASE_ALREADY_EXCEEDS_GUARD")
+    require(record["ratios"]["R_increment"]<=config["increment_limit"],"V21_INCREMENT_BUDGET_EXCEEDED")
     streak=streak+1 if record["ratios"]["R_D"]>10 else 0
     require(streak<2,"V21_TWO_STEP_GRADIENT_RATIO_GT10")
     keep=record["components"]["keep"];im=record["components"]["pg2/imitation"]["parameter_norm"]
