@@ -45,7 +45,7 @@ def main():
             if gp.get_num_connections():gp.publish(goal)
             hb+=1;msg['heartbeat']=hb
             if not faulted and time.monotonic()-start>=5.:
-                faulted=True;kind=cfg['fault'];event=dict(kind=kind,wall_ns=time.time_ns(),ros=rospy.Time.now().to_sec());(out/'INJECTION.json').write_text(json.dumps(event,indent=2));emit('FAULT',kind=kind)
+                faulted=True;kind=cfg['fault'];event=dict(kind=kind,wall_ns=time.time_ns(),ros=rospy.Time.now().to_sec());(out/'INJECTION.json').write_text(json.dumps(event,indent=2));emit('FAULT',fault_kind=kind)
                 if kind=='publisher_exit':break
                 if kind=='computation_timeout':time.sleep(.6)
                 elif kind=='duplicate':msg['heartbeat']=hb-1

@@ -7,6 +7,7 @@ CASES={('v%03d_'%int(speed*1000)+fault):(11511+si*8+i,speed,fault,0,False) for s
 CASES['v400_publisher_exit_r2']=(11540,.4,'publisher_exit',0,False)
 CASES['v400_publisher_exit_r3']=(11541,.4,'publisher_exit',0,False)
 CASES['v400_publisher_exit_r4']=(11542,.4,'publisher_exit',0,False)
+CASES['v400_publisher_exit_r5']=(11543,.4,'publisher_exit',0,False)
 CASES.update(semantics_ready=(11531,.0,'publisher_exit',1,True),semantics_feedback=(11532,.0,'publisher_exit',0,True))
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def inventory(out):
