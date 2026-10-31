@@ -1,6 +1,6 @@
 """Read-only evidence analysis. No controller publications, training or weight changes."""
 from pathlib import Path
-import json,csv,collections,hashlib,time
+import json,csv,collections,hashlib,time,sys
 import numpy as np,torch
 from query_minco.training.io import read,write,sha,require
 from query_minco.models import QueryMincoPlanner
@@ -9,6 +9,7 @@ from query_minco.inference.identity import state_sha
 from query_minco.integration.stagec_execution_v2.renderer_volume import RendererHistory
 from query_minco.integration.pg2_stagec_v1.reference import Reference
 BASE=Path('/home/lizheng/query_minco_mainline/research_outputs/pg2_stagec_execution_v2');ROOT=BASE.parents[1]
+TAG=sys.argv[1] if len(sys.argv)>1 else '001'
 def rows(path):return [json.loads(x) for x in path.read_text().splitlines()] if path.exists() else []
 def peaks(odom,start_ns):
     r=[x for x in odom if x['wall_ns']>=start_ns];r=[x for i,x in enumerate(r) if i==0 or x['stamp']>r[i-1]['stamp']]
@@ -16,7 +17,7 @@ def peaks(odom,start_ns):
     t=np.array([x['stamp'] for x in r]);v=np.array([x['v'] for x in r]);dt=np.diff(t);a=np.diff(v,axis=0)/dt[:,None];valid=(dt>=.005)&(dt<=.03);j=np.diff(a,axis=0)/((dt[1:]+dt[:-1])/2)[:,None];jvalid=valid[1:]&valid[:-1]
     return dict(vmax_mps=float(np.linalg.norm(v,axis=1).max()),amax_causal_mps2=float(np.linalg.norm(a[valid],axis=1).max()) if valid.any() else None,jmax_causal_mps3=float(np.linalg.norm(j[jvalid],axis=1).max()) if jvalid.any() else None,scope='finite-difference odometry statistics; no interval/worst-case or rotor proof',source_samples=len(r))
 def control():
-    out=BASE/'CONTROL_ANALYSIS001';out.mkdir(exist_ok=False);allrows=[]
+    out=BASE/('CONTROL_ANALYSIS'+TAG);out.mkdir(exist_ok=False);allrows=[]
     for case in sorted((BASE/'SYSTEM').iterdir()):
         if not case.is_dir():continue
         result_path=case/('NATIVE_WATCHDOG_RESULT.json' if case.name.startswith('native_watchdog') else 'GATEWAY_RESULT.json')
@@ -45,7 +46,11 @@ def control():
     return allrows
 
 def shadow():
-    out=BASE/'SHADOW_ANALYSIS001';out.mkdir(exist_ok=False);case=BASE/'SYSTEM/domain_shadow_r3';frames=sorted(case.glob('shadow_frame*.npz'));model=QueryMincoPlanner();cp=ROOT/'research_outputs/pg3_v21_paired128_v1/runs/A42_A_PG3V21_formal_run001/commits/step0128/checkpoint.pt';model.load_state_dict(torch.load(cp,map_location='cpu',weights_only=True)['model']);model.eval().requires_grad_(False);torch.set_num_threads(1);identity=state_sha(model);require(identity=='268c4d80308e5bbcc3e8677ca2fdc67ccdcc3da84d664341727a3eb3984d8e36','FROZEN_PG2_ID')
+    out=BASE/('SHADOW_ANALYSIS'+TAG);out.mkdir(exist_ok=False);case=BASE/'SYSTEM/domain_shadow_r3';frames=sorted(case.glob('shadow_frame*.npz'));model=QueryMincoPlanner();cp=ROOT/'research_outputs/pg3_v21_paired128_v1/runs/A42_A_PG3V21_formal_run001/commits/step0128/checkpoint.pt';model.load_state_dict(torch.load(cp,map_location='cpu',weights_only=True)['model']);model.eval().requires_grad_(False);torch.set_num_threads(1);identity=state_sha(model);require(identity=='268c4d80308e5bbcc3e8677ca2fdc67ccdcc3da84d664341727a3eb3984d8e36','FROZEN_PG2_ID')
+    for f in frames:
+        qdata=np.load(f)
+        with torch.inference_mode():raw=model(torch.from_numpy(qdata['depth_input'][None]),torch.from_numpy(qdata['state'][None]));pred=TrajectoryPostprocessor()(raw,torch.from_numpy(qdata['state'][None]),num_samples=65)
+        require(np.array_equal(raw.numpy()[0],qdata['raw']) and np.array_equal(pred.trajectory.coeffs.numpy()[0],qdata['coefficients']) and np.array_equal(pred.parameters.durations.numpy()[0],qdata['durations']),'ALL_FROZEN_FRAME_REBUILD')
     nn={int(np.load(f)['source_stamp_ns']):f for f in frames};events={r['stamp_ns']:r for r in rows(case/'MOVING_SHADOW.jsonl') if r['status']=='RECORDED_NO_CONTROL'};h=RendererHistory();joined=[];grid=collections.Counter();grid_rows=[]
     for f in sorted((case/'FULL_NATIVE_INPUTS').glob('*.npz')):
         x=np.load(f);ns=int(x['source_stamp_ns']);stamp=ns*1e-9;h.add(stamp,x['depth_m'],x['origin'],x['rotation'])
@@ -60,12 +65,12 @@ def shadow():
                 ref=Reference(qdata['coefficients'][q],qdata['durations'][q],qdata['position_W'],qdata['R_WB0'],stamp,q);certificate=h.certify(ref.world_coefficients(),ref.durations,now);require(not certificate['online_permission'] and not certificate['selected_permission'],'NO_EXECUTION_AUTHORITY')
                 joined.append(dict(stamp_ns=ns,query=q,frame=nn[ns].name,raw_coefficients_times_bitwise=True,c2_residuals=ref.seam_residuals(),output_age_s=event['output_age_s'],certificate=certificate))
     before=identity;require(state_sha(model)==before,'FROZEN_PG2_MODIFIED')
-    write(out/'RESULT.json',dict(frames_saved=len(frames),full_native_joined_frames=len({r['stamp_ns'] for r in joined}),candidates=len(joined),raw_coefficient_rebuild='PASS',body_results=dict(collections.Counter(r['certificate']['status'] for r in joined)),forward_grid_posthoc=[dict(distance_m=k[0],status=k[1],count=v) for k,v in sorted(grid.items())],posthoc_scope='read-only geometry probes; not independent calibration or executable trajectories',model_sha256=identity,checkpoint_sha256=sha(cp),Query_tracking='NOT_RUN',online_releases=0,original_selector_all_none=all(e['selector']['selected_query'] is None for e in events.values())))
+    write(out/'RESULT.json',dict(frames_saved=len(frames),bitwise_rebuilt_frames=len(frames),native_unjoined_frame_count=len(frames)-len({r['stamp_ns'] for r in joined}),full_native_joined_frames=len({r['stamp_ns'] for r in joined}),candidates=len(joined),raw_coefficient_rebuild='PASS',body_results=dict(collections.Counter(r['certificate']['status'] for r in joined)),forward_grid_posthoc=[dict(distance_m=k[0],status=k[1],count=v) for k,v in sorted(grid.items())],posthoc_scope='read-only geometry probes; not independent calibration or executable trajectories',model_sha256=identity,checkpoint_sha256=sha(cp),Query_tracking='NOT_RUN',online_releases=0,original_selector_all_none=all(e['selector']['selected_query'] is None for e in events.values())))
     write(out/'CANDIDATE_CERTIFICATES.json',dict(rows=joined));write(out/'FORWARD_GRID_DIAGNOSTIC.json',dict(rows=grid_rows))
     return joined
 
 def independent():
-    out=BASE/'PG3_ANALYSIS001';out.mkdir(exist_ok=False);result=read(BASE/'PG3_INDEPENDENT001/RESULT.json');cases=result['cases'];methods={}
+    out=BASE/('PG3_ANALYSIS'+TAG);out.mkdir(exist_ok=False);result=read(BASE/'PG3_INDEPENDENT001/RESULT.json');cases=result['cases'];methods={}
     for name in ['ADAMW','GLOBAL_BACKTRACK','EXISTING_QP','FROZEN_QUERY_LOCAL']:
         rr=[c['methods'][name] for c in cases];chosen=[r['chosen'] for r in rr if r['chosen']];methods[name]=dict(accepted=len(chosen),case_count=len(cases),hard_repairs=sum(r['pre_fail_to_pass'] for r in chosen),safe_losses=sum(r['pre_safe_pass_to_fail'] for r in chosen),matched_safe_degraded=sum(r['matched_safe_degraded'] for r in chosen),oracle_before=sum(r['oracle_before'] for r in chosen),oracle_after=sum(r['oracle_after'] for r in chosen),known_mode_count_before=sum(r['known_modes_before'] for r in chosen),known_mode_count_after=sum(r['known_modes_after'] for r in chosen),cpu_s=sum(r['total_cpu_s'] for r in rr),actual_method_extra_cpu_s=sum(r['extra_cpu_s'] for r in rr))
     # Check matched-budget decisions and actual cost domination, not equal padding.

@@ -10,7 +10,7 @@ from query_minco.inference.observed_space import Scope,ConvexCell,FreeVolume,Err
 @dataclass(frozen=True)
 class NativeModel:
     width:int=800; height:int=512; fx:float=400.; fy:float=400.; cx:float=400.; cy:float=254.
-    resolution:float=.1; max_depth:float=20.; origin_linf_bound:float=10.; grid_origin_linf_bound:float=100.
+    resolution:float=.1; max_depth:float=20.; origin_linf_bound:float=10.; grid_origin_linf_bound:float=100.; occupancy_threshold:int=0
     def proof(self):
         vals=list(self.__dict__.values())
         if not all(np.isfinite(x) for x in vals) or min(self.fx,self.fy,self.resolution,self.max_depth)<=0 or min(self.origin_linf_bound,self.grid_origin_linf_bound)<0 or type(self.width)!=int or type(self.height)!=int:raise ValueError('RENDER_MODEL')
