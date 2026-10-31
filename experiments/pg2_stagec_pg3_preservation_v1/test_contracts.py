@@ -40,6 +40,8 @@ class LeaseTests(unittest.TestCase):
   a=self.armed()
   with self.assertRaises(ValueError):a.request_authority(Gates(),1)
   self.assertFalse(a.query_permission)
+  with self.assertRaises(ValueError):a.request_authority(Gates(True,True,True,0,True,True,True,True,'QUALIFIED_SENSOR_SIMULATION'),1)
+  self.assertFalse(a.query_permission)
  def test_timer_not_physical_fallback(self):
   a=self.armed();a.tick(1.11);a.request_fallback(1.12);self.assertEqual(a.tick(1.2),State.FALLBACK_REQUESTED)
   for evidence in [{},{'scope':'ANALYTIC_FIXTURE'},{'scope':'QUALIFIED_SENSOR_SIMULATION','real_simulation_execution':True}]:

@@ -62,7 +62,7 @@ class Arbiter:
  def request_authority(self,g,now):
   self.clock(now)
   if self.tick(now)!=State.READY_NO_AUTHORITY or not (g.explicit_sim_authorization and g.no_hardware and g.unique_controller and g.native_selector_query is not None and g.sensor_body_certificate and g.qualified_controller and g.qualified_splice and g.qualified_fallback and g.certificate_scope=='QUALIFIED_SENSOR_SIMULATION'):raise ValueError('AUTHORITY_GATES_BLOCKED')
-  self.transition(State.ACTIVE_SIM_ONLY,'ALL_EXTERNAL_QUALIFICATION_GATES',now);self.query_permission=True
+  raise ValueError('AUTHORITY_EVIDENCE_VERIFIER_NOT_IMPLEMENTED') # Booleans never establish physical certification.
  def conflict(self,now):self.clock(now);self.transition(State.ABORT,'CONTROLLER_OR_OWNER_CONFLICT',now)
  def request_fallback(self,now):self.clock(now);self.transition(State.FALLBACK_REQUESTED,'REQUEST_ONLY_NO_PHYSICAL_STOP_PROOF',now)
  def verify_fallback(self,evidence,now):

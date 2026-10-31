@@ -16,6 +16,8 @@ LOST=('f02_right_only_g4_v0','f02_right_only_g4_v1','f03_narrow3d_g5_v1')
 def run():
     torch.set_num_interop_threads(1)
     out=BASE/'ATTRIBUTION001';out.mkdir(exist_ok=False);spec,ctx,cfg=context(out);ds,geo,init,_,train,dev=ctx
+    states=np.stack([item[0].state.numpy() for item in train]);unique,counts=np.unique(states,axis=0,return_counts=True)
+    write(out/'TRAIN_SUPPORT.json',dict(training_samples=len(train),unique_states=unique.tolist(),state_counts=counts.tolist(),component_min=states.min(0).tolist(),component_max=states.max(0).tolist(),velocity_norm_range=[float(np.linalg.norm(states[:,:3],axis=1).min()),float(np.linalg.norm(states[:,:3],axis=1).max())],acceleration_norm_range=[float(np.linalg.norm(states[:,3:6],axis=1).min()),float(np.linalg.norm(states[:,3:6],axis=1).max())],support_claim='observed training states only; bounding box membership is not certification or generalized support'))
     items=[item for item in dev if item[0].sample_id in LOST];require(len(items)==3,'LOST_DEV_IDS');m=model_from(init);m.eval();rows=[];ids=[s.sample_id for s,f,meta in items];teacher=[];checkpoints={};start=time.monotonic()
     updates=[read(RUN/('commits/step%04d/UPDATE.json'%step)) for step in range(1,129)]
     require(all(not set(u['ids'])&set(ids) for u in updates),'DEV_WAS_DIRECTLY_SUPERVISED')

@@ -5,7 +5,9 @@ from query_minco.inference.shadow import K
 from query_minco.inference.online_selector import select
 class NativeVolume:
  def __init__(self):self.history=DepthHistory();self.bounds=None
- def add(self,stamp,depth,origin,rotation):self.history.add(DepthFrame(stamp,depth,origin,rotation,'B0'),K)
+ def add(self,stamp,depth,origin,rotation):
+  if not np.isfinite(stamp) or stamp<=0:raise ValueError('NO_VALID_SOURCE_TIMESTAMP')
+  self.history.add(DepthFrame(stamp,depth,origin,rotation,'B0'),K)
  def certificate(self,coefficients_world,durations,now):
   z=self.history.volume(now).certify(coefficients_world,durations,now,required_until=now+float(np.sum(durations)))
   inputs=hashlib.sha256()
