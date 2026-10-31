@@ -131,7 +131,7 @@ def main():
                         result=dict(status='DYNAMICS_STOP_PASS' if stopped and distance<=protocol['stop_displacement_limit_m'] and dz<=protocol['altitude_error_limit_m'] and 'unqualified_hold_reason' not in fallback else 'DYNAMICS_STOP_FAIL',trigger=trigger,fallback=fallback,initial=fallback_start,stopped_hold=stopped,maximum_stop_displacement_m=float(distance),maximum_altitude_error_m=float(dz),last_state=history[-1],FALLBACK_VERIFIED=False,online_volume='BLOCKED',motor_bounds='NOT_VERIFIED_NO_RPM_TELEMETRY',clock_scope='gateway clock-adapter injection only' if cfg['fault']=='clock_reset_adapter' else 'real ROS clock',Query_navigation=False);break
                 cmd=PositionCommand();cmd.header.stamp=rospy.Time.now();cmd.header.frame_id='world';cmd.trajectory_flag=0 if fault else cfg.get('controller_flag',0)
                 for obj,value in zip([cmd.position,cmd.velocity,cmd.acceleration],desired):obj.x,obj.y,obj.z=map(float,value)
-                if armed:pub.publish(cmd);emit('COMMAND',pva=desired.tolist(),flag=cmd.trajectory_flag,fault=fault,source_stamp=None if lease.plan is None else lease.plan['source_stamp'],last_valid_receipt=lease.rx)
+                if armed:pub.publish(cmd);emit('COMMAND',sample_stamp=now,header_stamp=cmd.header.stamp.to_sec(),pva=desired.tolist(),flag=cmd.trajectory_flag,fault=fault,source_stamp=None if lease.plan is None else lease.plan['source_stamp'],last_valid_receipt=lease.rx)
             time.sleep(.02)
         if result is None:result=dict(status='BLOCKED',reason='SCENARIO_TIMEOUT',fault=fault,FALLBACK_VERIFIED=False)
     finally:

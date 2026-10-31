@@ -18,6 +18,8 @@ CASES['native_watchdog_disabled']=(11553,.4,'gateway_exit',0,False)
 CASES['native_watchdog_v400_r2']=(11554,.4,'gateway_exit',0,False)
 CASES['native_watchdog_v800_r2']=(11555,.8,'gateway_exit',0,False)
 CASES['native_watchdog_disabled_r2']=(11556,.4,'gateway_exit',0,False)
+CASES['semantics_ready_r2']=(11557,.0,'publisher_exit',1,True)
+CASES['semantics_feedback_r2']=(11558,.0,'publisher_exit',0,True)
 CASES.update(semantics_ready=(11531,.0,'publisher_exit',1,True),semantics_feedback=(11532,.0,'publisher_exit',0,True))
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def inventory(out):
@@ -73,7 +75,7 @@ def run(name):
         shadow=(old/'moving_pg2_shadow.py').read_text().replace('time.monotonic()-start<31','time.monotonic()-start<12');(out/'PG2_SHADOW_EXECUTED.py').write_text(shadow)
         commands += [('sensor',['/home/lizheng/YOPO/Simulator/devel/lib/sensor_simulator/sensor_simulator_cuda']),('camera',[PY,'-B','-s','-u','-m','query_minco.inference.shadow_camera30','--host',str(out)]),('shadow',[PY,'-B','-s','-u',str(out/'PG2_SHADOW_EXECUTED.py'),str(out)]),('volume',[PY,'-B','-s','-u',str(ROOT/'experiments/pg2_stagec_execution_v2/full_volume_shadow.py'),str(out)])]
     if name.startswith('native_watchdog'):commands.append(('native_observer',[PY,'-B','-s','-u',str(ROOT/'experiments/pg2_stagec_execution_v2/native_observer.py'),str(out)]))
-    trace=[];files=[];ps=[];start=time.monotonic();error=None;killed=False
+    trace=[];files=[];ps=[];start=time.monotonic();error=None;killed=False;peak_rss_mib=0.
     try:
         for kind,cmd in commands:
             f=(out/(kind+'.log')).open('x');files.append(f)
@@ -89,6 +91,17 @@ def run(name):
             if any(p.poll() is not None and not (kind in ('source','shadow','gateway','volume','native_observer') and p.returncode==0) and not (killed and kind=='gateway') for kind,p in ps):raise ValueError('EARLY_CHILD_EXIT')
             available=int(next(l.split()[1] for l in Path('/proc/meminfo').read_text().splitlines() if l.startswith('MemAvailable:')))/1024
             if available<3072:raise ValueError('AVAILABLE_MEMORY_GATE')
+            nodes={}
+            for item in Path('/proc').iterdir():
+                if not item.name.isdigit():continue
+                try:
+                    data=(item/'status').read_text().splitlines();ppid=int(next(x.split()[1] for x in data if x.startswith('PPid:')));rss=int(next((x.split()[1] for x in data if x.startswith('VmRSS:')),0))/1024;nodes[int(item.name)]=(ppid,rss)
+                except (FileNotFoundError,ProcessLookupError,PermissionError):pass
+            owned={p.pid for _,p in ps};changed=True
+            while changed:
+                new={pid for pid,(parent,rss) in nodes.items() if parent in owned};changed=not new<=owned;owned|=new
+            rss=sum(nodes.get(pid,(0,0.))[1] for pid in owned);peak_rss_mib=max(peak_rss_mib,rss)
+            if rss>protocol['resources']['rss_mib']:raise ValueError('RSS_BUDGET')
             time.sleep(.05)
         else:raise ValueError('WALL_BUDGET')
     except Exception as ex:error=repr(ex)
@@ -100,7 +113,7 @@ def run(name):
             except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.wait(timeout=3)
         cleanup(out,port)
         for f in files:f.close()
-        result=dict(status='EXECUTED' if error is None else 'FAILED',error=error,processes=trace,wall_s=time.monotonic()-start,original_launch_sha256=sha(original),binary_inputs=identity,Query_control=False,scope=case['scope'],source_identity=source_identity);(out/'RUN.json').write_text(json.dumps(result,indent=2))
+        result=dict(status='EXECUTED' if error is None else 'FAILED',error=error,processes=trace,wall_s=time.monotonic()-start,original_launch_sha256=sha(original),binary_inputs=identity,Query_control=False,scope=case['scope'],source_identity=source_identity,peak_owned_tree_rss_mib=peak_rss_mib);(out/'RUN.json').write_text(json.dumps(result,indent=2))
     if error:raise ValueError(error)
     return json.loads((out/('NATIVE_WATCHDOG_RESULT.json' if name.startswith('native_watchdog') else 'GATEWAY_RESULT.json')).read_text())
 

@@ -82,6 +82,10 @@ class CoverageTests(unittest.TestCase):
   h=RendererHistory();h.add(1,np.ones((512,800))*3,np.array([0,0,2]),np.eye(3));c=np.zeros((3,3,6));c[:,:,0]=[1,0,2]
   with self.assertRaises(ValueError):h.certify(c,np.ones(3)*.03,1,ErrorBudget(tracking=0))
   self.assertEqual(h.certify(c,np.ones(3)*.03,.5)['status'],'UNKNOWN');self.assertFalse(h.frames)
+ def test_query_clock_rollback_clears_even_after_source_stamp(self):
+  h=RendererHistory();h.add(1,np.ones((512,800))*3,np.array([0,0,2]),np.eye(3));h.volume(1.2);h.volume(1.1);self.assertFalse(h.frames)
+ def test_declared_depth_reserve_is_applied(self):
+  h=RendererHistory();h.add(1,np.ones((512,800))*3,np.array([0,0,2]),np.eye(3));v,_=h.volume(1,ErrorBudget(depth_reserve=.15));w,_=h.volume(1,ErrorBudget(depth_reserve=.3));self.assertAlmostEqual(v.cells[0].b[1]-w.cells[0].b[1],.15)
  def test_no_unbounded_pose(self):
   with self.assertRaises(ValueError):RendererHistory().add(1,np.ones((512,800)),np.array([11,0,0]),np.eye(3))
 if __name__=='__main__':unittest.main()
