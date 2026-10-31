@@ -1,0 +1,1 @@
+VERSION="stagec_execution_v2_simulation_rig_only"

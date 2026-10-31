@@ -15,6 +15,7 @@ from query_minco.evaluation.validation import bernstein_controls,split_controls
 
 class Scope(str,Enum):
     NATIVE_RAYS='NATIVE_RAYS'
+    RENDERER_VOXELS='RENDERER_VOXELS_CONDITIONAL_NOT_FLIGHT'
     ANALYTIC_FIXTURE='ANALYTIC_FIXTURE'
     EXTERNAL_SUPERVISOR='EXTERNAL_SUPERVISOR'
 
