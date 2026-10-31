@@ -69,7 +69,7 @@ def one(step,spec,ctx,cfg,protocol,folder):
     before=torch.load(path0/'checkpoint.pt',map_location='cpu',weights_only=True);after=torch.load(path1/'checkpoint.pt',map_location='cpu',weights_only=True);monitor=read(path0/'MONITOR.json');expected=read(path1/'UPDATE.json')
     archived={str(p):sha(p) for p in [path0/'checkpoint.pt',path1/'checkpoint.pt']}
     e=MinimalEngine(model_from(init),spec,cfg);restore_monitor(e,before,monitor);ids,_=geo.orders[42].batch(step-1);samples=ds.load(ids)
-    require(all(s.sample_id.startswith(('f00_','f01_')) for s in samples),'TRAIN_ONLY')
+    require(all(s.sample_id in ds.rows for s in samples) and not ({s.sample_id for s in samples}&{item[0].sample_id for item in dev}),'TRAIN_ONLY')
     pack=Parameters(e.model);v=pack.values();rec=e.step(samples,geo);adam=pack.values()-v
     replay=dict(model_exact=state_sha(e.model)==after['model_sha256'],optimizer_exact=semantic_sha(e.opt.state_dict())==semantic_sha(after['optimizer']),exposure_exact=digest(e.exposure.state_dict())==digest(after['exposure']),gradient_witness_exact=digest(canonical_gradient_witness(rec))==digest(canonical_gradient_witness(expected)))
     write(folder/'ADAM_REPLAY.json',replay);require(all(replay.values()),'FROZEN_REPLAY_MISMATCH')
