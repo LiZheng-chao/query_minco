@@ -16,7 +16,7 @@ int main(int argc,char**argv){
   if(scenario)add(c,15.f,0.f,2.f,scenario==1?2:1);
   GridMap g(c,.1f,1);CameraParams k;k.fx=400;k.fy=400;k.cx=400;k.cy=254;k.image_width=800;k.image_height=512;k.max_depth_dist=20;k.normalize_depth=false;
   cudaMat::SE3<float>T(1,0,0,0,0,0,2);cv::Mat depth;renderDepthImage(&g,&k,T,depth);
-  if(cudaGetLastError()!=cudaSuccess)return 3;
+  cudaError_t err=cudaGetLastError();if(err!=cudaSuccess){std::cerr<<"CUDA_ERROR "<<cudaGetErrorString(err)<<std::endl;return 3;}
   std::ofstream f(dir+"/native"+std::to_string(scenario)+".f32",std::ios::binary);f.write((char*)depth.data,800*512*sizeof(float));g.freeGridMap();
  }
  return 0;

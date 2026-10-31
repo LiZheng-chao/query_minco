@@ -59,7 +59,7 @@ def main():
             pub.publish(String(data=json.dumps(msg)));emit('REF',message=msg);time.sleep(.02)
         (out/'SOURCE_RESULT.json').write_text(json.dumps(dict(status='EXECUTED',fault=cfg['fault'],source_stamp=stamp,plan_sha256=digest(plan)),indent=2));rospy.signal_shutdown('source scenario completed');return
     # Downstream is an independent controller reference channel; ordinary Query pos_cmd is never published.
-    pub=rospy.Publisher('/stagec/controller_ref',PositionCommand,queue_size=1);master=rosgraph.Master(rospy.get_name());lease=Lease('stagec_source');fault=None;fallback=None;fallback_start=None;initial=None;trigger=None;history=[];graph_ok=False;ready_since=None;stop_since=None;stopped=False
+    pub=rospy.Publisher('/stagec/controller_ref',PositionCommand,queue_size=1);master=rosgraph.Master(rospy.get_name());lease=Lease('stagec_source');fault=None;fallback=None;fallback_start=None;initial=None;trigger=None;history=[];graph_ok=False;ready_since=None;stop_since=None;stopped=False;armed=False
     def latch(reason):
         nonlocal fault,trigger
         if fault is None:fault=reason;trigger=dict(reason=reason,wall_ns=time.time_ns(),ros=rospy.Time.now().to_sec(),steady=time.monotonic());emit('TRIGGER',**trigger)
@@ -91,12 +91,18 @@ def main():
                 last_graph=steady
             with lock:
                 if odom is None:time.sleep(.02);continue
-                if initial is None:initial=odom['p'].copy()
+                if initial is None:initial=np.array([0.,0.,2.])
                 if not np.isfinite(odom['p']).all() or not np.isfinite(odom['v']).all():raise ValueError('NONFINITE_PLANT_STATE')
-                if now-odom['stamp']>.1:latch('STALE_STATE')
-                if float(np.linalg.norm(odom['v']))>protocol['max_plant_speed_mps']:latch('PLANT_SPEED_BOUND')
-                if not (out/'GATEWAY_READY.json').exists() and steady-start>3 and graph_ok and np.linalg.norm(odom['v'])<.02:
-                    (out/'GATEWAY_READY.json').write_text(json.dumps(dict(wall_ns=time.time_ns(),ros=now,p=odom['p'].tolist(),simulation_only=True)))
+                if armed and now-odom['stamp']>.1:latch('STALE_STATE')
+                if armed and float(np.linalg.norm(odom['v']))>protocol['max_plant_speed_mps']:latch('PLANT_SPEED_BOUND')
+                if not armed:
+                    settled=graph_ok and steady-start>3 and 0<=now-odom['stamp']<=.05 and np.linalg.norm(odom['v'])<.02 and np.linalg.norm(odom['p']-initial)<.02
+                    ready_since=steady if settled and ready_since is None else ready_since if settled else None
+                    if ready_since is not None and steady-ready_since>=1.:
+                        armed=True;(out/'GATEWAY_READY.json').write_text(json.dumps(dict(wall_ns=time.time_ns(),ros=now,p=odom['p'].tolist(),simulation_only=True,settled_hover_s=steady-ready_since)))
+                    else:
+                        # Native takeoff has its own controller. Never fight it by sending a ground hold.
+                        time.sleep(.005);continue
                 if fault is None and lease.plan is not None:
                     try:desired=lease.check(now,steady)
                     except ValueError as ex:latch(str(ex))
