@@ -7,7 +7,7 @@ BASE=ROOT/'research_outputs/pg2_stagec_pg3_preservation_v1/SYSTEM'
 def run(kind,run_id=None):
     if kind not in ('moving','watchdog'):raise ValueError('DIAGNOSTIC_ONLY')
     BASE.mkdir(exist_ok=True);run_id=run_id or (kind+'001')
-    allowed={'moving001':11401,'moving002':11403,'watchdog001':11402}
+    allowed={'moving001':11401,'moving002':11403,'watchdog001':11402,'watchdog002':11405}
     if run_id not in allowed or not run_id.startswith(kind):raise ValueError('EXACT_RUN_WHITELIST')
     out=BASE/run_id;out.mkdir(exist_ok=False)
     old=OLD/('run_moving_shadow.py' if kind=='moving' else 'run_native_watchdog_probe.py')
@@ -15,8 +15,12 @@ def run(kind,run_id=None):
     s=s.replace(' from cleanup_owned_ros import cleanup'," sys.path.insert(0,'/home/lizheng/query_minco_mainline')\n from experiments.pg2_stagec_pg3_preservation_v1.cleanup import cleanup")
     observer=ROOT/'experiments/pg2_stagec_pg3_preservation_v1/lease_observer.py'
     s=s.replace("('yopo',[", "('lease',['/home/lizheng/anaconda3/envs/yopo/bin/python','-B','-s','-u',"+repr(str(observer))+",str(out)],Path('/home/lizheng/query_minco_mainline')),('yopo',[")
+    s=s.replace("if (out/'OBSERVATION_RESULT.json').exists():break", "if (out/'OBSERVATION_RESULT.json').exists() and (out/'LEASE_RESULT.json').exists():break")
+    s=s.replace("(name=='shadow' and p.returncode==0)", "(name in ('shadow','observer','lease') and p.returncode==0)")
     generated=out/'EXECUTED_RUNNER.py';generated.write_text(s)
     (out/'PROVENANCE.json').write_text(json.dumps(dict(original_path=str(old),original_sha256=hashlib.sha256(old.read_bytes()).hexdigest(),generated_sha256=hashlib.sha256(generated.read_bytes()).hexdigest(),changes='new output, isolated port, explicit immutable helper import; original modules unchanged',Query_control=False),indent=2))
     rc=subprocess.call([sys.executable,'-B',str(generated)])
     if rc:raise RuntimeError('RUNNER_FAILED:'+str(rc))
+    result=json.loads((out/'RUN_RESULT.json').read_text());audit=json.loads((out/'DESCENDANT_CLEANUP_AUDIT.json').read_text())
+    if result['status']!='EXECUTED' or audit['status']!='PASS' or not (out/'LEASE_RESULT.json').exists():raise RuntimeError('DIAGNOSTIC_FINALIZATION_FAILED')
 if __name__=='__main__':run(sys.argv[1],sys.argv[2] if len(sys.argv)>2 else None)

@@ -2,7 +2,7 @@
 from pathlib import Path
 import os,sys,time,signal,json,socket
 ROOT=Path('/home/lizheng/query_minco_mainline/research_outputs/pg2_stagec_pg3_preservation_v1/SYSTEM')
-ALLOWED={'moving001':11401,'watchdog001':11402,'moving002':11403,'cleanup_contract001':11404}
+ALLOWED={'moving001':11401,'watchdog001':11402,'moving002':11403,'cleanup_contract001':11404,'watchdog002':11405}
 def inventory(out):
  entries=[]
  prefix='__log:='+str(out/'roslog')+'/'
