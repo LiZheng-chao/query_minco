@@ -37,6 +37,7 @@ class RendererHistory:
         self.frames.append((stamp,d,o,R));self.last=stamp;self.frames=[f for f in self.frames[-8:] if stamp-f[0]<=self.max_age]
     def volume(self,now,errors=ErrorBudget()):
         m=self.model;proof=m.proof();cells=[];reasons=[]
+        if self.last is not None and now<self.last:self.frames.clear();self.last=None;return FreeVolume((),Scope.RENDERER_VOXELS,errors,reason='CLOCK_RESET_HISTORY_CLEARED'),proof
         if not proof['covered']:return FreeVolume((),Scope.RENDERER_VOXELS,errors,reason='RAY_LATTICE_COVERAGE_NOT_PROVED'),proof
         for stamp,d,o,R in self.frames:
             if not 0<=now-stamp<=self.max_age:reasons.append('STALE');continue
@@ -52,6 +53,7 @@ class RendererHistory:
             cells.append(ConvexCell(W,b+W@o,stamp+self.max_age,'native_voxel_conditional:'+identity,o))
         return FreeVolume(tuple(cells),Scope.RENDERER_VOXELS,errors,reason='NO_PROVED_NATIVE_VOXEL_CELL:'+','.join(reasons)),proof
     def certify(self,c,d,now,errors=ErrorBudget()):
+        if errors.body_radius!=.12 or errors.margin<.03 or min(errors.tracking,errors.translation,errors.extrinsic,errors.rotation_rad,errors.depth_reserve)<=0:raise ValueError('UNQUALIFIED_ZERO_OR_REDUCED_BODY_ERROR_BUDGET')
         vol,proof=self.volume(now,errors);z=vol.certify(c,d,now,required_until=now+float(np.sum(d)))
         z.update(covering_proof=proof,physical_geometry_status='UNQUALIFIED_VOXEL_MODEL_ONLY',tracking_localization_latency_braking_bounds='UNQUALIFIED_NOT_ZERO',online_permission=False)
         assert not z['selected_permission'];return z

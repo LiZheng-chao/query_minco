@@ -78,6 +78,10 @@ class CoverageTests(unittest.TestCase):
   self.assertEqual(h.certify(c,np.ones(3),1)['status'],'UNKNOWN');self.assertEqual(h.certify(c,np.ones(3)*.03,2)['status'],'UNKNOWN')
   with self.assertRaises(ValueError):h.add(.5,np.ones((512,800)),np.array([0,0,2]),np.eye(3))
   self.assertFalse(h.frames)
+ def test_zero_uncertainty_and_clock_reset_refused(self):
+  h=RendererHistory();h.add(1,np.ones((512,800))*3,np.array([0,0,2]),np.eye(3));c=np.zeros((3,3,6));c[:,:,0]=[1,0,2]
+  with self.assertRaises(ValueError):h.certify(c,np.ones(3)*.03,1,ErrorBudget(tracking=0))
+  self.assertEqual(h.certify(c,np.ones(3)*.03,.5)['status'],'UNKNOWN');self.assertFalse(h.frames)
  def test_no_unbounded_pose(self):
   with self.assertRaises(ValueError):RendererHistory().add(1,np.ones((512,800)),np.array([11,0,0]),np.eye(3))
 if __name__=='__main__':unittest.main()

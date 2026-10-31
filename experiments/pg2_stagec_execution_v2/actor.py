@@ -46,7 +46,7 @@ def main():
             hb+=1;msg['heartbeat']=hb
             if not faulted and time.monotonic()-start>=5.:
                 faulted=True;kind=cfg['fault'];event=dict(kind=kind,wall_ns=time.time_ns(),ros=rospy.Time.now().to_sec());(out/'INJECTION.json').write_text(json.dumps(event,indent=2));emit('FAULT',fault_kind=kind)
-                if kind=='publisher_exit':break
+                if kind in ('publisher_exit','gateway_exit'):break
                 if kind=='computation_timeout':time.sleep(.6)
                 elif kind=='duplicate':msg['heartbeat']=hb-1
                 elif kind=='owner_conflict':msg['owner']='rogue_owner'
@@ -84,7 +84,9 @@ def main():
             now=rospy.Time.now().to_sec();steady=time.monotonic()
             if steady-last_graph>=.2:
                 graph=master.getSystemState();nodes=master.getPid();pubs=dict(graph[0]);names=set(n for group in graph for _,nn in group for n in nn)
-                allowed={'/rosout','/quadrotor_simulator_so3','/network_controller_node','/stagec_source','/stagec_gateway','/pg2_moving_readonly_shadow','/shadow_camera30'}
+                allowed={'/rosout','/quadrotor_simulator_so3','/network_controller_node','/stagec_source','/stagec_gateway'}
+                if cfg.get('case_id','').startswith('domain_shadow'):allowed.update({'/pg2_moving_readonly_shadow','/forest30_camera_lattice','/sensor_simulator_node','/stagec_full_volume_shadow'})
+                if cfg.get('native_watchdog_test'):allowed.add('/stagec_native_observer')
                 graph_ok=not(names-allowed) and pubs.get('/stagec/controller_ref',[])==['/stagec_gateway'] and rospy.get_param('/network_controller_node/is_simulation',False) is True
                 emit('GRAPH',graph=graph,nodes=sorted(names),simulation_scope_ok=graph_ok)
                 if not graph_ok:latch('ROS_OWNER_OR_HARDWARE_SCOPE_CONFLICT')
