@@ -19,11 +19,21 @@ def project(adam,G):
     else:
         r=minimize(lambda x:.5*x@H@x+b@x,np.zeros(len(A)),jac=lambda x:H@x+b,bounds=[(0,None)]*len(A),method='SLSQP',options=dict(ftol=1e-13,maxiter=2000))
         lam=r.x;success=bool(r.success);message=str(r.message);iterations=int(r.nit)
+    # Deterministic dual coordinate polishing solves the SAME nonnegative QP;
+    # it tightens convergence, never changes epsilon, weights or KKT acceptance.
+    residual=H@lam+b;polish_sweeps=0;polish_converged=False
+    for sweep in range(5000):
+        if np.max(np.abs(lam-np.maximum(lam-residual,0.)))<=1e-10:polish_converged=True;break
+        for i in range(len(lam)):
+            nxt=max(0.,lam[i]-residual[i]/H[i,i]);change=nxt-lam[i]
+            if change:lam[i]=nxt;residual+=change*H[:,i]
+        polish_sweeps=sweep+1
+    success=success or polish_converged
     v=unit+A.T@lam;primal=A@v
     station=float(np.linalg.norm(v-unit-A.T@lam));infeasible=float(max(0.,-primal.min()));dual=float(max(0.,-lam.min()));complement=float(np.max(np.abs(lam*primal)))
     gap=float(abs(.5*np.linalg.norm(v-unit)**2+.5*lam@H@lam+b@lam))
     kkt=max(station,infeasible,dual,complement,gap)
-    info=dict(status='PASS' if success and kkt<=KKT_TOL else 'FAILED_QP',success=success,message=message,iterations=iterations,kkt_max=kkt,primal_violation=infeasible,dual_violation=dual,stationarity=station,complementarity=complement,duality_gap=gap,normalized_predicted_margins=primal.tolist(),multipliers=lam.tolist(),runtime_s=time.perf_counter()-start,relative_norm=float(np.linalg.norm(v)),gram_rank=int(np.linalg.matrix_rank(H)),constraints=len(A),parameter_dimension=len(a),hessian_dimension=len(A),epsilon_i=0.)
+    info=dict(status='PASS' if success and kkt<=KKT_TOL else 'FAILED_QP',success=success,message=message,iterations=iterations,polish_sweeps=polish_sweeps,polish_converged=polish_converged,kkt_max=kkt,primal_violation=infeasible,dual_violation=dual,stationarity=station,complementarity=complement,duality_gap=gap,normalized_predicted_margins=primal.tolist(),multipliers=lam.tolist(),runtime_s=time.perf_counter()-start,relative_norm=float(np.linalg.norm(v)),gram_rank=int(np.linalg.matrix_rank(H)),constraints=len(A),parameter_dimension=len(a),hessian_dimension=len(A),epsilon_i=0.)
     require(info['status']=='PASS','NEXT_QP_KKT_OR_CONVERGENCE_FAILED:'+str(info))
     return scale*v,info
 

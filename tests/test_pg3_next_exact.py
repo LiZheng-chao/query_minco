@@ -62,6 +62,15 @@ class ExactContract(unittest.TestCase):
   with self.assertRaises(ValueError):bank.get(s,broken)
  def test_T06_ADAM_REPLAY(self):
   p=evidence();r=read(p/'COUNTERFACTUAL/REPLAY_SUMMARY.json');self.assertTrue(r['all_replays_exact']);self.assertGreaterEqual(r['cases'],9)
+ def test_adam_loaded_checkpoint_moments_are_not_aliased(self):
+  from experiments.pg3_next_exact_v1.counterfactual import restore_monitor
+  from query_minco.training.pg3_next_exact_v1.proxy import semantic_sha
+  from query_minco.training.pg3_v2_no_corridor.executor_v21 import Engine
+  import sys
+  sys.path.insert(0,str(ROOT/'tests'));from test_pg3_v21_executor import toy,spec,CFG,advance
+  model=toy();e=Engine(model,spec(model),CFG);advance(e)
+  before=copy.deepcopy(dict(model=e.model.state_dict(),optimizer=e.opt.state_dict(),exposure=e.exposure.state_dict(),torch_rng=torch.get_rng_state()))
+  monitor=dict(completed=e.completed,monitor=copy.deepcopy(e.monitor));original=semantic_sha(before);restore_monitor(e,before,monitor);advance(e);self.assertEqual(semantic_sha(before),original);restore_monitor(e,before,monitor);e.validate_state()
  def test_T07_PROJECTION_MATH(self):
   a=np.array([-1.,2.]);G=np.array([[1.,0.]]);d,r=project(a,G);np.testing.assert_allclose(d,[0,2],atol=1e-8);self.assertLessEqual(r['kkt_max'],1e-7)
   G=np.array([[1.,0.],[-1.,0.],[0.,1.]]);d,r=project(a,G);x=minimize(lambda x:.5*np.sum((x-a)**2),np.zeros(2),jac=lambda x:x-a,constraints=[dict(type='ineq',fun=lambda x:G@x,jac=lambda x:G)],method='SLSQP');np.testing.assert_allclose(d,x.x,atol=1e-7)

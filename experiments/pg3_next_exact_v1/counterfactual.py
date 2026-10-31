@@ -24,7 +24,7 @@ ID='pg3_next_disposable_adam_cone_counterfactual_v1'
 CASES=tuple((arm,step) for arm in ('A','M','G','K') for step in (1,92,118))
 
 def restore_monitor(engine,before,monitor):
-    engine.model.load_state_dict(before['model']);engine.opt.load_state_dict(before['optimizer']);engine.exposure.load_state_dict(before['exposure']);engine.completed=monitor['completed'];engine.monitor=copy.deepcopy(monitor['monitor']);torch.set_rng_state(before['torch_rng'])
+    engine.model.load_state_dict(before['model']);engine.opt.load_state_dict(copy.deepcopy(before['optimizer']));engine.opt.zero_grad(set_to_none=True);engine.exposure.load_state_dict(before['exposure']);engine.completed=monitor['completed'];engine.monitor=copy.deepcopy(monitor['monitor']);torch.set_rng_state(before['torch_rng'])
     engine.validate_state()
 def fixed_mode(z,before_z,samples,obj):
     if not before_z['weights']['mode']:return None
@@ -103,18 +103,18 @@ def one_case(folder,arm,step,context,config):
 
 def run(out,context,config):
     folder=out/'COUNTERFACTUAL';folder.mkdir(exist_ok=False);write(folder/'PREREGISTRATION.json',dict(id=ID,cases=[dict(arm=a,step=s) for a,s in CASES],training_only=True,alphas=ALPHAS,epsilon=0,trial_evaluations_per_method=6,requires_actual_adam=True,formal_training=False))
-    results=[];blocked=[]
+    results=[];blocked=[];isolation=[]
     for arm,step in CASES:
-        case=folder/(arm+'_step%04d'%step);case_rng=torch.get_rng_state().clone();case_np=np.random.get_state();case_py=random.getstate()
+        case=folder/(arm+'_step%04d'%step);archive_paths=[runpath(arm)/('commits/step%04d/checkpoint.pt'%i) for i in (step-1,step)];archive_before={str(p):sha(p) for p in archive_paths};case_rng=torch.get_rng_state().clone();case_np=np.random.get_state();case_py=random.getstate()
         try:results.append(one_case(case,arm,step,context,config))
         except Exception as e:
             import traceback
             write(case/'BLOCKED.json',dict(status='BLOCKED',reason=str(e),traceback=traceback.format_exc()));blocked.append(dict(arm=arm,step=step,reason=str(e)));print('CF_BLOCKED',arm,step,str(e)[:300],flush=True)
-        torch.set_rng_state(case_rng);np.random.set_state(case_np);random.setstate(case_py);gc.collect()
+        torch.set_rng_state(case_rng);np.random.set_state(case_np);random.setstate(case_py);isolated=all(sha(Path(p))==h for p,h in archive_before.items()) and torch.equal(torch.get_rng_state(),case_rng);isolation.append(dict(arm=arm,step=step,status='PASS' if isolated else 'FAILED'));require(isolated,'NEXT_FAILED_CASE_ARCHIVE_OR_RNG_POLLUTION');gc.collect()
     replay_files=list(folder.glob('*/ADAM_REPLAY.json'));replays=[read(p) for p in replay_files]
     all_exact=len(replays)==len(CASES) and all(all(r[k] for k in ('model_exact','optimizer_exact','exposure_exact','delta_digest_exact','gradient_evidence_digest_exact')) for r in replays)
     write(folder/'REPLAY_SUMMARY.json',dict(all_replays_exact=all_exact,cases=len(replays),raw_gradient_vector_digest='NOT_AVAILABLE_IN_HISTORICAL_LOGS',gradient_witness='stored full Gram,norm,loss,ratios digest + exact model/Adam moments/delta'))
-    write(folder/'ISOLATION.json',dict(status='PASS' if all(r['isolation']=='PASS' for r in results) and not blocked else 'BLOCKED',completed=len(results),blocked=blocked))
+    write(folder/'ISOLATION.json',dict(status='PASS' if all(r['status']=='PASS' for r in isolation) else 'FAILED',cases=isolation,completed=len(results),blocked_methods=blocked))
     # Conservative no-go until superiority in retained repair signal at equal evaluation cost is evidenced.
     better=[]
     for r in results:
