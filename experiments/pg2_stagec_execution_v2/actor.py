@@ -90,6 +90,7 @@ def main():
                 if not graph_ok:latch('ROS_OWNER_OR_HARDWARE_SCOPE_CONFLICT')
                 last_graph=steady
             with lock:
+                now=rospy.Time.now().to_sec();steady=time.monotonic() # after graph RPCs and concurrent state callbacks
                 if odom is None:time.sleep(.02);continue
                 if initial is None:initial=np.array([0.,0.,2.])
                 if not np.isfinite(odom['p']).all() or not np.isfinite(odom['v']).all():raise ValueError('NONFINITE_PLANT_STATE')
@@ -98,6 +99,7 @@ def main():
                 if not armed:
                     settled=graph_ok and steady-start>3 and 0<=now-odom['stamp']<=.05 and np.linalg.norm(odom['v'])<.02 and np.linalg.norm(odom['p']-initial)<.02
                     ready_since=steady if settled and ready_since is None else ready_since if settled else None
+                    emit('BOOTSTRAP',settled=bool(settled),state_age=now-odom['stamp'],speed=float(np.linalg.norm(odom['v'])),position_error=float(np.linalg.norm(odom['p']-initial)),held=0 if ready_since is None else steady-ready_since)
                     if ready_since is not None and steady-ready_since>=1.:
                         armed=True;(out/'GATEWAY_READY.json').write_text(json.dumps(dict(wall_ns=time.time_ns(),ros=now,p=odom['p'].tolist(),simulation_only=True,settled_hover_s=steady-ready_since)))
                     else:
@@ -120,6 +122,7 @@ def main():
                         stop_since=steady if stop_since is None else stop_since
                         if steady-stop_since>=protocol['stop_hold_s']:stopped=True
                     else:stop_since=None
+                    stopped=stop_since is not None and steady-stop_since>=protocol['stop_hold_s']
                     history.append(dict(elapsed=elapsed,p=odom['p'].tolist(),v=odom['v'].tolist()))
                     if elapsed>=protocol['stop_deadline_s']:
                         distance=max(np.linalg.norm(np.array(x['p'])-fallback_start['p']) for x in history);dz=max(abs(x['p'][2]-initial[2]) for x in history)
