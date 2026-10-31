@@ -5,6 +5,7 @@ ROOT=Path('/home/lizheng/query_minco_mainline');BASE=ROOT/'research_outputs/pg2_
 FAULTS=('publisher_exit','computation_timeout','stale','duplicate','future','owner_conflict','clock_reset_adapter','expired')
 CASES={('v%03d_'%int(speed*1000)+fault):(11511+si*8+i,speed,fault,0,False) for si,speed in enumerate((.4,.8)) for i,fault in enumerate(FAULTS)}
 CASES['v400_publisher_exit_r2']=(11540,.4,'publisher_exit',0,False)
+CASES['v400_publisher_exit_r3']=(11541,.4,'publisher_exit',0,False)
 CASES.update(semantics_ready=(11531,.0,'publisher_exit',1,True),semantics_feedback=(11532,.0,'publisher_exit',0,True))
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def inventory(out):

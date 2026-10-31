@@ -26,7 +26,7 @@ def main():
             if odom is not None and stamp>odom['stamp'] and .005<=stamp-odom['stamp']<=.03:acc=(vel-odom['v'])/(stamp-odom['stamp'])
             odom=dict(p=pos,v=vel,stamp=stamp,q=[m.pose.pose.orientation.x,m.pose.pose.orientation.y,m.pose.pose.orientation.z,m.pose.pose.orientation.w])
             if args.role=='gateway':emit('ODOM',p=pos.tolist(),v=vel.tolist(),a_causal=acc.tolist(),stamp=stamp,q=odom['q'])
-    rospy.Subscriber('/sim/odom',Odometry,odom_cb,queue_size=300)
+    rospy.Subscriber('/sim/odom',Odometry,odom_cb,queue_size=5,tcp_nodelay=True)
     if args.role=='source':
         pub=rospy.Publisher('/stagec/plan',String,queue_size=10);start=time.monotonic()
         while time.monotonic()-start<12 and not (out/'GATEWAY_READY.json').exists():time.sleep(.02)
@@ -102,7 +102,7 @@ def main():
                         armed=True;(out/'GATEWAY_READY.json').write_text(json.dumps(dict(wall_ns=time.time_ns(),ros=now,p=odom['p'].tolist(),simulation_only=True,settled_hover_s=steady-ready_since)))
                     else:
                         # Native takeoff has its own controller. Never fight it by sending a ground hold.
-                        time.sleep(.005);continue
+                        pass # outer-loop sleep occurs AFTER releasing the odometry lock
                 if fault is None and lease.plan is not None:
                     try:desired=lease.check(now,steady)
                     except ValueError as ex:latch(str(ex))
@@ -126,7 +126,7 @@ def main():
                         result=dict(status='DYNAMICS_STOP_PASS' if stopped and distance<=protocol['stop_displacement_limit_m'] and dz<=protocol['altitude_error_limit_m'] and 'unqualified_hold_reason' not in fallback else 'DYNAMICS_STOP_FAIL',trigger=trigger,fallback=fallback,initial=fallback_start,stopped_hold=stopped,maximum_stop_displacement_m=float(distance),maximum_altitude_error_m=float(dz),last_state=history[-1],FALLBACK_VERIFIED=False,online_volume='BLOCKED',motor_bounds='NOT_VERIFIED_NO_RPM_TELEMETRY',clock_scope='gateway clock-adapter injection only' if cfg['fault']=='clock_reset_adapter' else 'real ROS clock',Query_navigation=False);break
                 cmd=PositionCommand();cmd.header.stamp=rospy.Time.now();cmd.header.frame_id='world';cmd.trajectory_flag=0 if fault else cfg.get('controller_flag',0)
                 for obj,value in zip([cmd.position,cmd.velocity,cmd.acceleration],desired):obj.x,obj.y,obj.z=map(float,value)
-                pub.publish(cmd);emit('COMMAND',pva=desired.tolist(),flag=cmd.trajectory_flag,fault=fault,source_stamp=None if lease.plan is None else lease.plan['source_stamp'],last_valid_receipt=lease.rx)
+                if armed:pub.publish(cmd);emit('COMMAND',pva=desired.tolist(),flag=cmd.trajectory_flag,fault=fault,source_stamp=None if lease.plan is None else lease.plan['source_stamp'],last_valid_receipt=lease.rx)
             time.sleep(.02)
         if result is None:result=dict(status='BLOCKED',reason='SCENARIO_TIMEOUT',fault=fault,FALLBACK_VERIFIED=False)
     finally:
