@@ -12,6 +12,8 @@ class ReferenceTests(unittest.TestCase):
    np.testing.assert_allclose(evaluate(c,0),[0,0,2],atol=1e-12);np.testing.assert_allclose(evaluate(c,0,1),[v,0,0],atol=1e-12);np.testing.assert_allclose(evaluate(c,T,1),0,atol=1e-12);np.testing.assert_allclose(evaluate(c,T,2),0,atol=1e-12);self.assertLessEqual(z['max_reference_a'],.8);self.assertLessEqual(z['max_reference_j'],2.)
  def test_nonzero_initial_acceleration(self):
   a=np.array([.1,.02,0]);z=brake(np.array([0,0,2]),np.array([.4,0,0]),a);np.testing.assert_allclose(evaluate(z['coefficients'][0],0,2),a)
+ def test_mixed_degree_tiny_axis_motion(self):
+  z=brake(np.array([1.4,0,2]),np.array([.4007,7.6e-9,4.5e-7]),np.array([.006,-1.5e-7,-4.6e-6]));self.assertLessEqual(z['max_reference_a'],.8);self.assertLessEqual(z['max_reference_j'],2.)
  def test_finite_difference(self):
   z=brake(np.array([0,0,2]),np.array([.8,0,0]),np.zeros(3));c=z['coefficients'][0];h=1e-5;t=.5
   np.testing.assert_allclose((evaluate(c,t+h)-evaluate(c,t-h))/(2*h),evaluate(c,t,1),atol=1e-9)

@@ -16,7 +16,8 @@ def quintic(p,v,a,p1,T):
 def extrema(c,T,k):
     a=np.asarray(c,float)
     for _ in range(k):a=a[:,1:]*np.arange(1,a.shape[1])
-    sq=sum((np.polynomial.polynomial.polymul(x,x) for x in a),np.zeros(1))
+    sq=np.zeros(1)
+    for x in a:sq=np.polynomial.polynomial.polyadd(sq,np.polynomial.polynomial.polymul(x,x))
     roots=np.polynomial.polynomial.polyroots(np.polynomial.polynomial.polyder(sq));ts=[0.,T]+[float(r.real) for r in roots if abs(r.imag)<1e-7 and 0<r.real<T]
     return max(float(np.linalg.norm(evaluate(c,t,k))) for t in ts)
 
