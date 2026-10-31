@@ -73,6 +73,11 @@ class ReferenceTests(unittest.TestCase):
   r=self.ref()
   with self.assertRaises(ValueError):r.coefficients[0,0,0]=3
   with self.assertRaises(ValueError):Reference(np.full((3,3,6),np.nan),np.ones(3),np.zeros(3),np.eye(3),10,1)
+ def test_physical_derivatives_finite_difference(self):
+  rng=np.random.RandomState(42);c=rng.randn(3,3,6)*.02;r=Reference(c,np.ones(3),np.array([1,2,3.]),np.eye(3),10,1);t=10.4;h=1e-4
+  a=r.pva(t-h);b=r.pva(t);d=r.pva(t+h)
+  np.testing.assert_allclose((d[0]-a[0])/(2*h),b[1],atol=1e-8,rtol=1e-6)
+  np.testing.assert_allclose((d[1]-a[1])/(2*h),b[2],atol=1e-8,rtol=1e-6)
  def test_controller_ready(self):self.assertEqual(controller_semantics(1),'ACCELERATION_ONLY')
 
 class VolumeTests(unittest.TestCase):
@@ -84,6 +89,7 @@ class VolumeTests(unittest.TestCase):
  def test_maxrange_edges_occlusion_gaps_stay_unknown(self):
   for kind in ['maxrange','unknown','edge','gap','fov']:
    d=np.ones((2,128,160),dtype=np.float32);d[0]*=.5
+   if kind=='maxrange':d[:]=0 # 20m raw depth decodes to invalid; separately tested below
    if kind=='unknown':d[:]=0
    if kind=='edge':d[0,:,79]=.05
    if kind=='gap':d[:,::2]=0
@@ -111,4 +117,33 @@ class MechanismTests(unittest.TestCase):
  def test_zero_or_cosine_not_success(self):
   c=dict(accepted=True,relative_update_norm=0,pre_fail_to_pass=2,pre_safe_pass_to_fail=0);b=dict(c,relative_update_norm=1,pre_fail_to_pass=1)
   self.assertFalse(superior(c,b));c['relative_update_norm']=1;self.assertTrue(superior(c,b));c['pre_safe_pass_to_fail']=1;self.assertFalse(superior(c,b))
+
+class DomainAndSweepTests(unittest.TestCase):
+ def test_depth_raw_invalid_never_free(self):
+  from query_minco.inference.shadow import decode_image
+  for value in [0.,20.,21.,float('nan'),float('inf'),-1.]:
+   raw=np.full((128,160),value,dtype='<f4');d=decode_image(raw.tobytes(),'32FC1',160,128,640,False)
+   self.assertEqual(int(d[1].sum()),0);v=NativeVolume();v.add(1,d,np.zeros(3),np.eye(3))
+   z=v.certificate(np.zeros((3,3,6)),np.ones(3)*.1,1);self.assertEqual(z['status'],'UNKNOWN')
+ def test_operating_domain_no_threshold_relaxation(self):
+  from query_minco.inference.shadow import make_state
+  _,diag=make_state(np.zeros(3),np.eye(3),np.array([.8,0,0]),np.zeros(3),np.array([10,0,0]));self.assertEqual(diag['ood'],[])
+  _,diag=make_state(np.zeros(3),np.eye(3),np.array([6.,0,0]),np.zeros(3),np.array([10,0,0]));self.assertIn('VELOCITY_NOT_F1_POINT8',diag['ood'])
+  for goal in [[1,0,0],[-10,0,0],[10,5,0]]:
+   with self.assertRaises(ValueError):make_state(np.zeros(3),np.eye(3),np.array([.8,0,0]),np.zeros(3),np.array(goal))
+ def test_swept_body_fixture_scope_only(self):
+  from query_minco.inference.observed_space import FreeVolume,Scope,box_cell,ErrorBudget
+  c=np.zeros((3,3,6));d=np.ones(3)*.1
+  err=ErrorBudget(body_radius=.12,margin=.03,tracking=0,translation=0,extrinsic=0,rotation_rad=0,depth_reserve=0)
+  vol=FreeVolume((box_cell([-1,-1,-1],[1,1,1],10,'UNIT_ONLY'),),Scope.ANALYTIC_FIXTURE,err)
+  z=vol.certify(c,d,1,required_until=1.3);self.assertEqual(z['status'],'CERTIFIED_FREE');self.assertFalse(z['selected_permission'])
+  # Every center stays inside, but the full ball crosses a wall.
+  c[:,0,0]=.9;self.assertEqual(vol.certify(c,d,1,required_until=1.3)['status'],'UNKNOWN')
+  c[:]=0;self.assertEqual(vol.certify(c,d,9.9,required_until=10.2)['status'],'UNKNOWN')
+ def test_midsegment_excursion_not_endpoint_sampling(self):
+  from query_minco.inference.observed_space import FreeVolume,Scope,box_cell,ErrorBudget
+  c=np.zeros((3,3,6));c[0,0,1]=8;c[0,0,2]=-8 # endpoints0, midpoint2m
+  vol=FreeVolume((box_cell([-1]*3,[1]*3,10,'UNIT_ONLY'),),Scope.ANALYTIC_FIXTURE,ErrorBudget())
+  self.assertEqual(vol.certify(c,np.ones(3),1,required_until=4)['status'],'UNKNOWN')
+
 if __name__=='__main__':unittest.main()

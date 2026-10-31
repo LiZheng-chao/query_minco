@@ -1,5 +1,5 @@
 """Fixed-budget TRAIN-only frozen counterfactual; never publishes a checkpoint."""
-import copy,gc,json,time,traceback,resource,random,subprocess,sys
+import copy,gc,json,time,traceback,resource,random,subprocess,sys,os
 from pathlib import Path
 import numpy as np
 import torch
@@ -31,7 +31,7 @@ def context(folder):
     reference=ROOT/'query_minco/methods/reference.json';require(sha(reference)==binding['historical_reference']['sha256'],'REFERENCE_CONTENT_CHANGED')
     binding['historical_reference']=dict(path=str(reference),sha256=sha(reference));write(folder/'BINDINGS.json',binding)
     ref=dict(path=str((folder/'BINDINGS.json').resolve()),sha256=sha(folder/'BINDINGS.json'))
-    prep,ctx=load_context(ref);write(folder/'DATA_QUALIFICATION.json',ctx[3]);write(folder/'SOURCE.json',dict(code=code,tracked_and_untracked_status=subprocess.check_output(['git','status','--porcelain'],text=True),formal_qualification=False))
+    prep,ctx=load_context(ref);write(folder/'DATA_QUALIFICATION.json',ctx[3]);write(folder/'SOURCE.json',dict(code=code,tracked_and_untracked_status=subprocess.check_output(['git','status','--porcelain'],text=True),formal_qualification=False,thread_environment={k:os.environ.get(k) for k in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS','NUMEXPR_NUM_THREADS')},torch_num_threads=torch.get_num_threads()))
     cfg=read(artifact(prep['configuration']));return spec,ctx,cfg
 
 def sigs(z,scenes):
@@ -131,6 +131,8 @@ def one(step,spec,ctx,cfg,protocol,folder):
     write(folder/'RESULT.json',result);return result
 
 def run():
+    require(all(os.environ.get(k)=='1' for k in ('OMP_NUM_THREADS','MKL_NUM_THREADS','OPENBLAS_NUM_THREADS','NUMEXPR_NUM_THREADS')),'EXPLICIT_SINGLE_THREAD_ENV_REQUIRED')
+    torch.set_num_interop_threads(1)
     out=BASE/(sys.argv[1] if len(sys.argv)>1 else 'COUNTERFACTUAL001');out.mkdir(exist_ok=False);spec,ctx,cfg=context(out);protocol=read(BASE/'PREREGISTRATION.json');rows=[]
     # Fixed registered ten chronological TRAIN event steps; no Dev case selection.
     for step in [1,9,13,26,28,30,31,45,92,118]:

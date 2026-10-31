@@ -14,13 +14,14 @@ from experiments.pg3_feasible_mode_v1.fulltrain128_evaluation import signature,i
 from .counterfactual import context,BASE,RUN,QUAL
 LOST=('f02_right_only_g4_v0','f02_right_only_g4_v1','f03_narrow3d_g5_v1')
 def run():
+    torch.set_num_interop_threads(1)
     out=BASE/'ATTRIBUTION001';out.mkdir(exist_ok=False);spec,ctx,cfg=context(out);ds,geo,init,_,train,dev=ctx
     items=[item for item in dev if item[0].sample_id in LOST];require(len(items)==3,'LOST_DEV_IDS');m=model_from(init);m.eval();rows=[];ids=[s.sample_id for s,f,meta in items];teacher=[];checkpoints={};start=time.monotonic()
     updates=[read(RUN/('commits/step%04d/UPDATE.json'%step)) for step in range(1,129)]
     require(all(not set(u['ids'])&set(ids) for u in updates),'DEV_WAS_DIRECTLY_SUPERVISED')
     for s,f,meta in items:
         for i,t in enumerate(meta['teachers']):
-            c=np.asarray(t['coeffs'] if 'coeffs' in t else t['coefficients']);d=np.asarray(t['durations']);teacher.append(dict(sample_id=s.sample_id,teacher=i,qa=integral(c,d,2),qj=integral(c,d,3),time=float(d.sum()),route=signature(c,d,meta['scene'])))
+            c=s.teacher_coeffs[i].numpy();d=s.teacher_durations[i].numpy();teacher.append(dict(sample_id=s.sample_id,teacher=i,qa=integral(c,d,2),qj=integral(c,d,3),time=float(d.sum()),route=signature(c,d,meta['scene'])))
     for step in range(129):
         cp=RUN/('commits/step%04d/checkpoint.pt'%step);blob=torch.load(cp,map_location='cpu',weights_only=True);m.load_state_dict(blob['model']);checkpoints[str(step)]=sha(cp)
         with torch.no_grad():
