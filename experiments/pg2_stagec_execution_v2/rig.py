@@ -15,6 +15,9 @@ CASES['domain_shadow_r3']=(11546,.8,'publisher_exit',0,False)
 CASES['native_watchdog_v400']=(11551,.4,'gateway_exit',0,False)
 CASES['native_watchdog_v800']=(11552,.8,'gateway_exit',0,False)
 CASES['native_watchdog_disabled']=(11553,.4,'gateway_exit',0,False)
+CASES['native_watchdog_v400_r2']=(11554,.4,'gateway_exit',0,False)
+CASES['native_watchdog_v800_r2']=(11555,.8,'gateway_exit',0,False)
+CASES['native_watchdog_disabled_r2']=(11556,.4,'gateway_exit',0,False)
 CASES.update(semantics_ready=(11531,.0,'publisher_exit',1,True),semantics_feedback=(11532,.0,'publisher_exit',0,True))
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def inventory(out):
@@ -44,7 +47,7 @@ def cleanup(out,port):
 def run(name):
     source_identity=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),executed_files={str(p.relative_to(ROOT)):sha(p) for p in [Path(__file__),Path(__file__).with_name('actor.py'),ROOT/'query_minco/integration/stagec_execution_v2/reference.py']})
     port,speed,fault,flag,semantics=CASES[name];folder=BASE/'SYSTEM';folder.mkdir(exist_ok=True);out=folder/name;out.mkdir(exist_ok=False)
-    sock=socket.socket();sock.bind(('127.0.0.1',port));sock.close();protocol=json.loads((BASE/'PREREGISTRATION.json').read_text());(out/'PROTOCOL.json').write_text(json.dumps(protocol,indent=2));case=dict(case_id=name,scope=protocol['scope'],port=port,speed=speed,fault=fault,controller_flag=flag,semantics_probe=semantics,initial_position=[2.,2.,2.] if name.startswith('domain_shadow') else [0.,0.,2.],native_watchdog_test=name.startswith('native_watchdog'),native_watchdog_enabled=name.startswith('native_watchdog') and name!='native_watchdog_disabled');(out/'CASE.json').write_text(json.dumps(case,indent=2))
+    sock=socket.socket();sock.bind(('127.0.0.1',port));sock.close();protocol=json.loads((BASE/'PREREGISTRATION.json').read_text());(out/'PROTOCOL.json').write_text(json.dumps(protocol,indent=2));case=dict(case_id=name,scope=protocol['scope'],port=port,speed=speed,fault=fault,controller_flag=flag,semantics_probe=semantics,initial_position=[2.,2.,2.] if name.startswith('domain_shadow') else [0.,0.,2.],native_watchdog_test=name.startswith('native_watchdog'),native_watchdog_enabled=name.startswith('native_watchdog') and 'disabled' not in name);(out/'CASE.json').write_text(json.dumps(case,indent=2))
     (out/'EXECUTION_IDENTITY.json').write_text(json.dumps(source_identity,indent=2))
     # Only remap the independent downstream input; retain all original Controller equations/parameters.
     original=Path('/home/lizheng/YOPO/Controller/src/so3_quadrotor_simulator/launch/simulator_attitude_control.launch');launch=original.read_text().replace('to="/so3_control/pos_cmd"','to="/stagec/controller_ref"');
@@ -57,7 +60,7 @@ def run(name):
     env.update(ROS_MASTER_URI='http://127.0.0.1:'+str(port),ROS_IP='127.0.0.1',ROS_LOG_DIR=str(out/'roslog'),ROS_HOME=str(out/'roshome'),PYTHONDONTWRITEBYTECODE='1',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',NUMEXPR_NUM_THREADS='1',CUDA_VISIBLE_DEVICES='')
     env['CMAKE_PREFIX_PATH']='/home/lizheng/YOPO/Controller/devel:/home/lizheng/YOPO/Simulator/devel:/opt/ros/noetic';env['ROS_PACKAGE_PATH']='/home/lizheng/YOPO/Controller/src:/home/lizheng/YOPO/Simulator/src:/opt/ros/noetic/share';env['LD_LIBRARY_PATH']='/home/lizheng/YOPO/Controller/devel/lib:/home/lizheng/YOPO/Simulator/devel/lib:'+env.get('LD_LIBRARY_PATH','');env['PYTHONPATH']='/home/lizheng/YOPO/Controller/devel/lib/python3/dist-packages:'+env.get('PYTHONPATH','')
     if name.startswith('native_watchdog'):
-        overlay=BASE/'CONTROLLER_BUILD002/devel';patched=overlay/'lib/so3_control/network_control_node'
+        overlay=BASE/('CONTROLLER_BUILD003/devel' if name.endswith('_r2') else 'CONTROLLER_BUILD002/devel');patched=overlay/'lib/so3_control/network_control_node'
         assert patched.is_file(),'PATCHED_CONTROLLER_BINARY_REQUIRED'
         source_identity['patched_controller_binary_sha256']=sha(patched);source_identity['YOPO_worktree_commit']=subprocess.check_output(['git','-C','/home/lizheng/YOPO_stagec_watchdog_v2','rev-parse','HEAD'],text=True).strip();(out/'EXECUTION_IDENTITY.json').write_text(json.dumps(source_identity,indent=2))
         env['CMAKE_PREFIX_PATH']=str(overlay)+':'+env['CMAKE_PREFIX_PATH'];env['LD_LIBRARY_PATH']=str(overlay/'lib')+':'+env['LD_LIBRARY_PATH'];env['ROS_PACKAGE_PATH']='/home/lizheng/YOPO_stagec_watchdog_v2/Controller/src/so3_control:'+env['ROS_PACKAGE_PATH']

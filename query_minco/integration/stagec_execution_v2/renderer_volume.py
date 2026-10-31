@@ -10,7 +10,7 @@ from query_minco.inference.observed_space import Scope,ConvexCell,FreeVolume,Err
 @dataclass(frozen=True)
 class NativeModel:
     width:int=800; height:int=512; fx:float=400.; fy:float=400.; cx:float=400.; cy:float=254.
-    resolution:float=.1; max_depth:float=20.; origin_linf_bound:float=10.
+    resolution:float=.1; max_depth:float=20.; origin_linf_bound:float=10.; grid_origin_linf_bound:float=100.
     def proof(self):
         vals=list(self.__dict__.values())
         if not all(np.isfinite(x) for x in vals) or min(self.fx,self.fy,self.resolution,self.max_depth)<=0 or type(self.width)!=int or type(self.height)!=int:raise ValueError('RENDER_MODEL')
@@ -23,8 +23,9 @@ class NativeModel:
         # operations for fixed quaternion step and inverse projection. Identity
         # or normalized pose and finite bounded coordinates are required.
         e=math.sqrt(3)*(gamma(N)*(self.origin_linf_bound+N*h*L)+N*gamma(128)*h*3*(1+ty+tz)+gamma(128)*(self.origin_linf_bound+N*h*L))
+        e+=math.sqrt(3)*gamma(4)*(self.grid_origin_linf_bound+self.origin_linf_bound+N*h*L) # Pos2Vox subtraction/division registration roundoff
         cover=math.sqrt((h/2)**2+((self.max_depth+h)/(2*self.fx))**2+((self.max_depth+h)/(2*self.fy))**2)
-        return dict(step=h,steps=N,float_error_m=e,lattice_cover_radius_m=cover,total_cover_radius_m=cover+e,inscribed_voxel_radius_m=self.resolution/2,covered=cover+e<self.resolution/2,assumptions='IEEE FP32 round-to-nearest bounded source operations; normalized rigid pose; declared constant voxel occupancy and exact native model; NOT unvoxelized physical geometry')
+        return dict(step=h,steps=N,float_error_m=e,lattice_cover_radius_m=cover,total_cover_radius_m=cover+e,inscribed_voxel_radius_m=self.resolution/2,covered=cover+e<self.resolution/2,assumptions='IEEE FP32 round-to-nearest bounded source operations; normalized rigid pose; grid origin bounded by declared100m contract; declared constant voxel occupancy and exact native model; NOT unvoxelized physical geometry')
 class RendererHistory:
     def __init__(self,model=NativeModel(),max_age=.25):
         if not 0<max_age<=.25:raise ValueError('AGE')

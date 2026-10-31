@@ -1,0 +1,176 @@
+diff --git a/Controller/src/so3_control/include/so3_control/NetworkControl.h b/Controller/src/so3_control/include/so3_control/NetworkControl.h
+index 550ed14..7c50a92 100644
+--- a/Controller/src/so3_control/include/so3_control/NetworkControl.h
++++ b/Controller/src/so3_control/include/so3_control/NetworkControl.h
+@@ -20,6 +20,9 @@
+ #include <fstream>
+ #include <thread>
+ #include <mutex>
++#include <chrono>
++#include <sstream>
++#include <std_msgs/String.h>
+ #include <algorithm> 
+ 
+ #define ONE_G 9.81
+@@ -43,6 +46,12 @@ public:
+         nh_.param("takeoff_altitude", takeoff_altitude_, 2.0);
+         nh_.param("record_log", record_log_, false);
+         nh_.param("logger_file_name", logger_file_name, std::string("/home/lu/"));
++        nh_.param("stagec_watchdog_enable", stagec_watchdog_enable_, false);
++        if (stagec_watchdog_enable_ && !is_simulation_) throw std::runtime_error("STAGEC_WATCHDOG_SIMULATION_ONLY");
++        if (stagec_watchdog_enable_) {
++            stagec_watchdog_pub_ = nh_.advertise<std_msgs::String>("stagec_watchdog_state", 10);
++            stagec_watchdog_timer_ = nh_.createWallTimer(ros::WallDuration(control_dt_), &NetworkControl::stagecWatchdog, this);
++        }
+         printf("kx: (%f, %f, %f), kv: (%f, %f, %f) \n", kx_xy, kx_xy, kx_z, kv_xy, kv_xy, kv_z);
+ 
+         so3_command_pub_ = nh_.advertise<quadrotor_msgs::SO3Command>("so3_cmd", 10);
+@@ -108,6 +117,20 @@ private:
+     std::ofstream logger;
+     std::string logger_file_name;
+ 
++    bool stagec_watchdog_enable_ = false, stagec_seen_ = false, stagec_latched_ = false, stagec_force_ = false;
++    bool stagec_odom_seen_ = false, stagec_acc_valid_ = false, stagec_profile_qualified_ = false;
++    ros::WallTimer stagec_watchdog_timer_;
++    ros::Publisher stagec_watchdog_pub_;
++    std::chrono::steady_clock::time_point stagec_rx_, stagec_odom_rx_, stagec_start_;
++    ros::Time stagec_stamp_, stagec_odom_stamp_;
++    Eigen::Vector3d stagec_previous_v_ = Eigen::Vector3d::Zero(), stagec_acc_ = Eigen::Vector3d::Zero();
++    Eigen::Matrix<double,3,6> stagec_coeff_ = Eigen::Matrix<double,3,6>::Zero();
++    double stagec_T_ = 2.0;
++    std::string stagec_reason_;
++    void stagecWatchdog(const ros::WallTimerEvent&);
++    void stagecBuildBrake();
++    Eigen::Vector3d stagecEval(double t, int derivative);
++    double stagecBernsteinBound(int derivative);
+     void initLogRecorder();
+ 
+     void recordLog(Eigen::Vector3d &cur_v, Eigen::Vector3d &cur_a, Eigen::Vector3d &des_a, Eigen::Vector3d &dis_a, double cur_yaw, double des_yaw);
+@@ -120,7 +143,7 @@ private:
+ 
+     void limite_acc(Eigen::Vector3d &acc);
+ 
+-    void network_cmd_callback(const quadrotor_msgs::PositionCommand::ConstPtr &cmd);
++    void network_cmd_callback(const ros::MessageEvent<quadrotor_msgs::PositionCommand const> &event);
+ 
+     void odom_callback(const nav_msgs::Odometry::ConstPtr &odom);
+ 
+diff --git a/Controller/src/so3_control/src/NetworkControl.cpp b/Controller/src/so3_control/src/NetworkControl.cpp
+index 0fbe15f..317f298 100644
+--- a/Controller/src/so3_control/src/NetworkControl.cpp
++++ b/Controller/src/so3_control/src/NetworkControl.cpp
+@@ -231,8 +231,9 @@ void NetworkControl::limite_acc(Eigen::Vector3d &acc){
+     }
+ }
+ 
+-void NetworkControl::network_cmd_callback(const quadrotor_msgs::PositionCommand::ConstPtr &cmd)
++void NetworkControl::network_cmd_callback(const ros::MessageEvent<quadrotor_msgs::PositionCommand const> &event)
+ {
++    const auto cmd=event.getMessage();
+     if (!ctrl_valid_)
+         return;
+ 
+@@ -242,6 +243,22 @@ void NetworkControl::network_cmd_callback(const quadrotor_msgs::PositionCommand:
+     if (!arm_state || !ofb_enable)
+         return;
+ 
++    if (stagec_watchdog_enable_) {
++        if (stagec_latched_) return; // no automatic recovery into an old reference
++        if(event.getPublisherName()!="/stagec_gateway" || cmd->header.frame_id!="world") {
++            stagec_reason_="DOWNSTREAM_OWNER_OR_FRAME_CONFLICT";stagec_force_=true;stagec_seen_=true;return;
++        }
++        const double age = (ros::Time::now() - cmd->header.stamp).toSec();
++        if (!std::isfinite(age) || cmd->header.stamp.isZero() || age < 0 || age > 0.1 ||
++            (stagec_seen_ && cmd->header.stamp <= stagec_stamp_)) {
++            stagec_reason_ = "STALE_DUPLICATE_FUTURE_OR_RESET_DOWNSTREAM_REFERENCE";
++            stagec_force_ = true; stagec_seen_ = true; return;
++        }
++        if (!std::isfinite(cmd->position.x+cmd->position.y+cmd->position.z+cmd->velocity.x+cmd->velocity.y+cmd->velocity.z+cmd->acceleration.x+cmd->acceleration.y+cmd->acceleration.z+cmd->yaw+cmd->yaw_dot)) {
++            stagec_reason_ = "NONFINITE_DOWNSTREAM_REFERENCE";stagec_force_=true;stagec_seen_=true;return;
++        }
++        stagec_stamp_ = cmd->header.stamp; stagec_rx_=std::chrono::steady_clock::now();stagec_seen_=true;
++    }
+     position_cmd_init_ = true;
+ 
+     des_pos_ = Eigen::Vector3d(cmd->position.x, cmd->position.y, cmd->position.z);
+@@ -280,6 +297,14 @@ void NetworkControl::network_cmd_callback(const quadrotor_msgs::PositionCommand:
+ 
+ void NetworkControl::odom_callback(const nav_msgs::Odometry::ConstPtr &odom)
+ {
++    if(stagec_watchdog_enable_) {
++        const auto &p=odom->pose.pose.position;const auto &v=odom->twist.twist.linear;const auto &q=odom->pose.pose.orientation;
++        double norm=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
++        if(!std::isfinite(p.x+p.y+p.z+v.x+v.y+v.z+q.x+q.y+q.z+q.w) || std::abs(norm-1.0)>0.002) {
++            stagec_force_=true;stagec_acc_valid_=false;stagec_reason_="INVALID_STATE_UNQUALIFIED_LAST_FINITE_HOLD";return;
++        }
++    }
++
+     cur_yaw_ = tf::getYaw(odom->pose.pose.orientation);
+     cur_vel_ = Eigen::Vector3d(odom->twist.twist.linear.x, odom->twist.twist.linear.y, odom->twist.twist.linear.z);
+ 
+@@ -292,6 +317,16 @@ void NetworkControl::odom_callback(const nav_msgs::Odometry::ConstPtr &odom)
+     // if(!is_simulation_)
+     //     cur_acc_ = Eigen::Vector3d(odom->twist.twist.angular.x, odom->twist.twist.angular.y, odom->twist.twist.angular.z);
+ 
++    if (stagec_watchdog_enable_) {
++        if (stagec_odom_seen_) {
++            const double dt=(odom->header.stamp-stagec_odom_stamp_).toSec();
++            stagec_acc_valid_=dt>=0.005 && dt<=0.03;
++            if (stagec_acc_valid_) stagec_acc_=(cur_vel_-stagec_previous_v_)/dt;
++            if (dt<=0 && stagec_seen_) {stagec_force_=true;stagec_reason_="ODOMETRY_CLOCK_RESET";}
++        }
++        stagec_previous_v_=cur_vel_;stagec_odom_stamp_=odom->header.stamp;
++        stagec_odom_rx_=std::chrono::steady_clock::now();stagec_odom_seen_=true;
++    }
+     so3_controller_.setPosition(cur_pos_);
+     so3_controller_.setVelocity(cur_vel_);
+     if (!state_init_)
+@@ -447,4 +482,46 @@ bool NetworkControl::arm_disarm_vehicle(bool arm)
+             logger.close();
+     }
+     return true;
+-}
+\ No newline at end of file
++}
++// Independent opt-in simulation watchdog. It never claims free-space or physical certification.
++Eigen::Vector3d NetworkControl::stagecEval(double t,int derivative) {
++    Eigen::Vector3d value=Eigen::Vector3d::Zero();
++    for(int k=derivative;k<6;k++){double f=1;for(int j=0;j<derivative;j++)f*=k-j;value+=stagec_coeff_.col(k)*f*std::pow(t,k-derivative);}return value;
++}
++double NetworkControl::stagecBernsteinBound(int derivative) {
++    const int n=5-derivative;double bound=0;
++    auto choose=[](int a,int b){double z=1;for(int j=1;j<=b;j++)z=z*(a-j+1)/j;return z;};
++    for(int k=0;k<=n;k++){Eigen::Vector3d v=Eigen::Vector3d::Zero();
++        for(int i=0;i<=k;i++){double f=1;for(int j=0;j<derivative;j++)f*=i+derivative-j;v+=stagec_coeff_.col(i+derivative)*f*std::pow(stagec_T_,i)*choose(k,i)/choose(n,i);}bound=std::max(bound,v.norm());}return bound;
++}
++void NetworkControl::stagecBuildBrake() {
++    stagec_profile_qualified_=false;
++    const bool state_ok=stagec_odom_seen_ && stagec_acc_valid_ &&
++      std::chrono::duration<double>(std::chrono::steady_clock::now()-stagec_odom_rx_).count()<=0.1 && cur_pos_.allFinite() && cur_vel_.allFinite() && stagec_acc_.allFinite();
++    if(state_ok) for(double T:{2.0,2.5,3.0,4.0}) {
++        stagec_T_=T;stagec_coeff_.setZero();stagec_coeff_.col(0)=cur_pos_;stagec_coeff_.col(1)=cur_vel_;stagec_coeff_.col(2)=stagec_acc_/2;
++        Eigen::Vector3d end=cur_pos_+cur_vel_*T/2+stagec_acc_*T*T/12;
++        Eigen::Matrix3d A;A<<T*T*T,std::pow(T,4),std::pow(T,5),3*T*T,4*T*T*T,5*std::pow(T,4),6*T,12*T*T,20*T*T*T;
++        Eigen::Matrix3d rhs;rhs.col(0)=end-stagecEval(T,0);rhs.col(1)=-stagecEval(T,1);rhs.col(2)=-stagecEval(T,2);
++        stagec_coeff_.rightCols<3>()=A.fullPivLu().solve(rhs.transpose()).transpose();
++        if(stagec_coeff_.allFinite() && stagecBernsteinBound(2)<=0.8 && stagecBernsteinBound(3)<=2.0){stagec_profile_qualified_=true;break;}
++    }
++    if(!stagec_profile_qualified_){stagec_coeff_.setZero();stagec_coeff_.col(0)=cur_pos_;stagec_T_=2.;stagec_reason_+="_UNQUALIFIED_HOLD_REQUEST";}
++}
++void NetworkControl::stagecWatchdog(const ros::WallTimerEvent&) {
++    if(!stagec_watchdog_enable_ || !is_simulation_ || !stagec_seen_ || !ctrl_valid_)return;
++    const auto now=std::chrono::steady_clock::now();
++    if(!stagec_latched_){
++        if(!stagec_force_ && std::chrono::duration<double>(now-stagec_rx_).count()<=0.1)return;
++        stagec_latched_=true;position_cmd_init_=true;stagec_start_=now;
++        if(stagec_reason_.empty())stagec_reason_="DOWNSTREAM_RECEIPT_TIMEOUT";
++        stagecBuildBrake();
++        ROS_WARN_STREAM("STAGEC_WATCHDOG_REQUEST "<<stagec_reason_<<" T="<<stagec_T_<<" reference_bound_a="<<stagecBernsteinBound(2)<<" reference_bound_j="<<stagecBernsteinBound(3));
++    }
++    double elapsed=std::chrono::duration<double>(now-stagec_start_).count(),t=std::min(elapsed,stagec_T_);
++    Eigen::Vector3d p=stagecEval(t,0),v=elapsed<stagec_T_?stagecEval(t,1):Eigen::Vector3d::Zero(),a=elapsed<stagec_T_?stagecEval(t,2):Eigen::Vector3d::Zero();
++    last_des_acc_=publishHoverSO3Command(p,v,a,cur_yaw_,0);
++    std_msgs::String message;std::ostringstream text;text.precision(17);
++    text<<"{\"reason\":\""<<stagec_reason_<<"\",\"elapsed\":"<<elapsed<<",\"duration\":"<<stagec_T_<<",\"bounded_reference\":"<<(stagec_profile_qualified_?"true":"false")<<",\"p\":["<<p.x()<<","<<p.y()<<","<<p.z()<<"],\"v\":["<<v.x()<<","<<v.y()<<","<<v.z()<<"],\"a\":["<<a.x()<<","<<a.y()<<","<<a.z()<<"],\"FALLBACK_VERIFIED\":false}";
++    message.data=text.str();stagec_watchdog_pub_.publish(message);
++}
