@@ -40,7 +40,7 @@ def main():
             c[:]=0;c[:,:,0]=origin;c[:,0,0]+=.15
         plan=dict(source_stamp=stamp,coefficients=c.tolist(),durations=[T,12.]);msg=dict(owner='stagec_source',sequence=1,heartbeat=0,plan=plan);faulted=False;start=time.monotonic();hb=0
         from geometry_msgs.msg import PoseStamped
-        gp=rospy.Publisher('/move_base_simple/goal',PoseStamped,queue_size=1,latch=True);goal=PoseStamped();goal.header.frame_id='world';goal.header.stamp=rospy.Time.now();goal.pose.position.x=10;goal.pose.position.z=2;goal.pose.orientation.w=1
+        gp=rospy.Publisher('/move_base_simple/goal',PoseStamped,queue_size=1,latch=True);goal=PoseStamped();goal.header.frame_id='world';goal.header.stamp=rospy.Time.now();goal.pose.position.x=float(origin[0]+10);goal.pose.position.y=float(origin[1]);goal.pose.position.z=float(origin[2]);goal.pose.orientation.w=1
         while time.monotonic()-start<15 and not rospy.is_shutdown():
             if gp.get_num_connections():gp.publish(goal)
             hb+=1;msg['heartbeat']=hb
@@ -94,7 +94,7 @@ def main():
             with lock:
                 now=rospy.Time.now().to_sec();steady=time.monotonic() # after graph RPCs and concurrent state callbacks
                 if odom is None:time.sleep(.02);continue
-                if initial is None:initial=np.array([0.,0.,2.])
+                if initial is None:initial=np.asarray(cfg.get('initial_position',[0.,0.,2.]),float)
                 if not np.isfinite(odom['p']).all() or not np.isfinite(odom['v']).all():raise ValueError('NONFINITE_PLANT_STATE')
                 if armed and now-odom['stamp']>.1:latch('STALE_STATE')
                 if armed and float(np.linalg.norm(odom['v']))>protocol['max_plant_speed_mps']:latch('PLANT_SPEED_BOUND')
