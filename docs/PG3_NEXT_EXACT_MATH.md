@@ -15,3 +15,5 @@ QP is min.5||d-dAdam||^2 subject to Gd>=0,epsilon0. Scale rows/proposal for cond
 `CUDA_VISIBLE_DEVICES='' python -m experiments.pg3_next_exact_v1.run diagnose --output <fresh-evidence>` in a strict clean worktree with pinned legacy external links. No ROS publisher, flight or formal128 dispatch exists. Final status must be supported by actual tests/evidence; reference implementations are read-only mechanism comparisons, no imported training constants.
 
 Adam optimizer state is deep-copied on every disposable restore; this is tested against input moment-tensor aliasing. The dual QP uses deterministic cyclic-coordinate polishing after SLSQP to tighten numerical convergence (same cone, same epsilon0 and unchanged KKT1e-7); solver failure remains blocked. Earlier aliasing/solver-attempt evidence is preserved.
+
+Native MINCO NumericalSolveError rejects an individual trial alpha and continues the same fixed grid from the independent before state; identity/resource failures still block. A synthetic native-solve rejection/backtrack test covers this branch.

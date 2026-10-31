@@ -92,6 +92,12 @@ class ExactContract(unittest.TestCase):
   def evaluate_trial(delta):
    pts=inner.clone();pts[:,:,:,1]+=float(delta[0]);return dict(protected_pass=hard(pts),all_numerical_valid=True,protected_goal_pass=True,relative_update_norm=abs(float(delta[0]))/.6)
   r=search(np.array([.6]),evaluate_trial,baseline_mode=1.);self.assertEqual(r['status'],'ACCEPTED');self.assertLess(r['chosen_alpha'],1.)
+  from query_minco.training.pg3_next_exact_v1.projection import numerical_attempt
+  from query_minco.trajectory.minco_adapter import NumericalSolveError
+  def failed_solve(delta):
+   if float(delta[0])>.5:raise NumericalSolveError('synthetic numerical failure')
+   return evaluate_trial(delta)
+  r=search(np.array([.6]),lambda delta:numerical_attempt(failed_solve,delta),baseline_mode=1.);self.assertFalse(r['trials'][0]['all_numerical_valid']);self.assertEqual(r['status'],'ACCEPTED');self.assertLess(r['chosen_alpha'],1.)
  def test_T09_PROGRESS_NOT_ZERO(self):
   r=search(np.zeros(2),lambda d:dict(protected_pass=True,protected_goal_pass=True,all_numerical_valid=True,relative_update_norm=0.),baseline_mode=1.)
   self.assertFalse(r['progress_not_zero']);p=evidence();x=read(p/'COUNTERFACTUAL/RESULT.json');self.assertIn(x['method_decision'],('NO_GO_FOR_METHOD_IMPLEMENTATION','POTENTIAL_REQUIRES_TRANSACTION_DESIGN'))

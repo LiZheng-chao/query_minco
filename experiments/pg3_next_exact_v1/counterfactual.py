@@ -10,7 +10,7 @@ from query_minco.training.pg3_v2_no_corridor.ablation_v21 import AblationEngine
 from query_minco.training.pg3_v2_no_corridor.revision import load_v21_checkpoint
 from query_minco.training.pg3_v2_no_corridor.audit import audit_v21,step_guard_v21
 from query_minco.training.pg3_next_exact_v1.proxy import Parameters,proxy,semantic_sha,canonical_gradient_witness
-from query_minco.training.pg3_next_exact_v1.projection import project,ALPHAS
+from query_minco.training.pg3_next_exact_v1.projection import project,ALPHAS,numerical_attempt
 from query_minco.training.pg2_guided_v1.geometry import TeacherGuidance
 from query_minco.training.pg2_guided_v2.objective import forward as pg2_forward
 from query_minco.training.pg3_v2_no_corridor.executor_v21 import wrap_pg2
@@ -88,7 +88,9 @@ def one_case(folder,arm,step,context,config):
         trials=[]
         # Equal actual evaluation count: six independent copies per method. Direct Adam repeats alpha1.
         for alpha in ((1.,)*6 if method=='ADAM_DIRECT' else ALPHAS):
-            row=trial(alpha*direction);row.update(alpha=alpha);trials.append(row)
+            row=numerical_attempt(trial,alpha*direction);row.update(alpha=alpha)
+            if not row['all_numerical_valid']:row['relative_update_norm']=float(np.linalg.norm(alpha*direction)/np.linalg.norm(adam.numpy()))
+            trials.append(row)
         accepted=next((r for r in trials if r['protected_pass'] and r['protected_goal_pass'] and r['all_numerical_valid']),None)
         if method=='ADAM_DIRECT':accepted=trials[0] if trials[0]['protected_pass'] and trials[0]['protected_goal_pass'] and trials[0]['all_numerical_valid'] else None
         results[method]=dict(status='ACCEPTED' if accepted else 'REJECTED',chosen_alpha=None if accepted is None else accepted['alpha'],chosen=accepted,trials=trials,evaluation_count=6,progress_not_zero=bool(accepted and accepted['relative_update_norm']>1e-6),solver_runtime_s=qp['runtime_s'] if method=='QUERY_QP_BACKTRACK' else 0.)

@@ -44,3 +44,12 @@ def search(direction,evaluate,*,baseline_mode,baseline_geom=None):
         if row.get('protected_pass') is True and row.get('all_numerical_valid') is True and row.get('protected_goal_pass') is True:
             return dict(status='ACCEPTED',chosen_alpha=alpha,trials=trials,chosen=row,progress_not_zero=bool(row.get('relative_update_norm',0)>1e-6))
     return dict(status='REJECTED',chosen_alpha=None,trials=trials,chosen=None,progress_not_zero=False)
+
+
+def numerical_attempt(evaluate,delta):
+    """A failed native MINCO solve rejects this alpha, never the remaining grid."""
+    from query_minco.trajectory.minco_adapter import NumericalSolveError
+    tick=time.perf_counter()
+    try:return evaluate(delta)
+    except NumericalSolveError as error:
+        return dict(protected_pass=False,protected_goal_pass=False,all_numerical_valid=False,pre_safe_pass_to_fail=None,pre_fail_to_pass=None,protected_min_clearance_change_m=None,relative_update_norm=0.,cosine_to_Adam=None,Mode_loss_delta=None,Geom_loss_delta=None,validator_runtime_s=time.perf_counter()-tick,total_runtime_s=time.perf_counter()-tick,numerical_rejection=str(error),formal_optimizer_state_equivalent=False)
