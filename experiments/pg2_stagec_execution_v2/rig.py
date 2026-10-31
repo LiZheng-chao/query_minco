@@ -9,6 +9,7 @@ CASES['v400_publisher_exit_r3']=(11541,.4,'publisher_exit',0,False)
 CASES['v400_publisher_exit_r4']=(11542,.4,'publisher_exit',0,False)
 CASES['v400_publisher_exit_r5']=(11543,.4,'publisher_exit',0,False)
 CASES['v400_publisher_exit_r6']=(11544,.4,'publisher_exit',0,False)
+CASES['domain_shadow']=(11533,.8,'publisher_exit',0,False)
 CASES.update(semantics_ready=(11531,.0,'publisher_exit',1,True),semantics_feedback=(11532,.0,'publisher_exit',0,True))
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def inventory(out):
@@ -36,8 +37,10 @@ def cleanup(out,port):
     s=socket.socket();s.settimeout(.2);closed=s.connect_ex(('127.0.0.1',port))!=0;s.close();r=dict(remaining=inventory(out),port_closed=closed,actions=actions);r['status']='PASS' if not r['remaining'] and closed else 'FAILED';(out/'CLEANUP.json').write_text(json.dumps(r,indent=2));assert r['status']=='PASS'
 
 def run(name):
+    source_identity=dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),executed_files={str(p.relative_to(ROOT)):sha(p) for p in [Path(__file__),Path(__file__).with_name('actor.py'),ROOT/'query_minco/integration/stagec_execution_v2/reference.py']})
     port,speed,fault,flag,semantics=CASES[name];folder=BASE/'SYSTEM';folder.mkdir(exist_ok=True);out=folder/name;out.mkdir(exist_ok=False)
     sock=socket.socket();sock.bind(('127.0.0.1',port));sock.close();protocol=json.loads((BASE/'PREREGISTRATION.json').read_text());(out/'PROTOCOL.json').write_text(json.dumps(protocol,indent=2));case=dict(scope=protocol['scope'],port=port,speed=speed,fault=fault,controller_flag=flag,semantics_probe=semantics);(out/'CASE.json').write_text(json.dumps(case,indent=2))
+    (out/'EXECUTION_IDENTITY.json').write_text(json.dumps(source_identity,indent=2))
     # Only remap the independent downstream input; retain all original Controller equations/parameters.
     original=Path('/home/lizheng/YOPO/Controller/src/so3_quadrotor_simulator/launch/simulator_attitude_control.launch');launch=original.read_text().replace('to="/so3_control/pos_cmd"','to="/stagec/controller_ref"');(out/'RIG.launch').write_text(launch)
     identity=json.loads((ROOT/'research_outputs/pg3_minimal_system_v1/SYSTEM/BINARY_IDENTITIES.json').read_text());assert all(sha(p)==v for p,v in identity.items())
@@ -46,14 +49,23 @@ def run(name):
     env['CMAKE_PREFIX_PATH']='/home/lizheng/YOPO/Controller/devel:/home/lizheng/YOPO/Simulator/devel:/opt/ros/noetic';env['ROS_PACKAGE_PATH']='/home/lizheng/YOPO/Controller/src:/home/lizheng/YOPO/Simulator/src:/opt/ros/noetic/share';env['LD_LIBRARY_PATH']='/home/lizheng/YOPO/Controller/devel/lib:/home/lizheng/YOPO/Simulator/devel/lib:'+env.get('LD_LIBRARY_PATH','');env['PYTHONPATH']='/home/lizheng/YOPO/Controller/devel/lib/python3/dist-packages:'+env.get('PYTHONPATH','')
     prefix=['/usr/bin/bwrap','--die-with-parent','--ro-bind','/','/','--proc','/proc','--dev-bind','/dev','/dev','--bind',str(out),str(out),'--chdir',str(ROOT),'--']
     actor=str(ROOT/'experiments/pg2_stagec_execution_v2/actor.py');commands=[('master',['/opt/ros/noetic/bin/roscore','-p',str(port)]),('controller',['/opt/ros/noetic/bin/roslaunch',str(out/'RIG.launch')]),('gateway',[PY,'-B','-s','-u',actor,'gateway',str(out),'--enable-isolated-dynamics-test']),('source',[PY,'-B','-s','-u',actor,'source',str(out),'--enable-isolated-dynamics-test'])]
+    if name=='domain_shadow':
+        import yaml
+        old=ROOT/'research_outputs/pg3_minimal_stageabc_v1/SYSTEM';sensor=yaml.safe_load((old/'moving_sensor.yaml').read_text());sensor.update(maze_type=6,room_number=1,x_length=12,y_length=12,z_length=6,add_ceiling=1,render_lidar=False)
+        (out/'SENSOR.yaml').write_text(yaml.safe_dump(sensor,sort_keys=False))
+        shadow=(old/'moving_pg2_shadow.py').read_text().replace('time.monotonic()-start<31','time.monotonic()-start<12');(out/'PG2_SHADOW_EXECUTED.py').write_text(shadow)
+        commands += [('sensor',['/home/lizheng/YOPO/Simulator/devel/lib/sensor_simulator/sensor_simulator_cuda']),('camera',[PY,'-B','-s','-u','-m','query_minco.inference.shadow_camera30','--host',str(out)]),('shadow',[PY,'-B','-s','-u',str(out/'PG2_SHADOW_EXECUTED.py'),str(out)])]
     trace=[];files=[];ps=[];start=time.monotonic();error=None
     try:
         for kind,cmd in commands:
-            f=(out/(kind+'.log')).open('x');files.append(f);argv=prefix+cmd;p=subprocess.Popen(argv,env=env,stdout=f,stderr=subprocess.STDOUT,start_new_session=True);ps.append((kind,p));trace.append(dict(name=kind,pid=p.pid,argv=argv));time.sleep(1.5 if kind=='master' else .6)
+            f=(out/(kind+'.log')).open('x');files.append(f)
+            if kind=='sensor':argv=prefix[:-3]+['--ro-bind',str(out/'SENSOR.yaml'),'/home/lizheng/YOPO/Simulator/src/config/config.yaml','--chdir','/home/lizheng/YOPO/Simulator','--']+cmd
+            else:argv=prefix+cmd
+            p=subprocess.Popen(argv,env=dict(env,CUDA_VISIBLE_DEVICES='0') if kind=='sensor' else env,stdout=f,stderr=subprocess.STDOUT,start_new_session=True);ps.append((kind,p));trace.append(dict(name=kind,pid=p.pid,argv=argv));time.sleep(1.5 if kind=='master' else .6)
             if p.poll() is not None:raise ValueError('EARLY_START_EXIT:'+kind)
         while time.monotonic()-start<45:
-            if (out/'GATEWAY_RESULT.json').exists():time.sleep(.1);break
-            if any(p.poll() is not None and not (kind=='source' and p.returncode==0) for kind,p in ps):raise ValueError('EARLY_CHILD_EXIT')
+            if (out/'GATEWAY_RESULT.json').exists() and (name!='domain_shadow' or (out/'MOVING_SHADOW_RESULT.json').exists()):time.sleep(.1);break
+            if any(p.poll() is not None and not (kind in ('source','shadow','gateway') and p.returncode==0) for kind,p in ps):raise ValueError('EARLY_CHILD_EXIT')
             available=int(next(l.split()[1] for l in Path('/proc/meminfo').read_text().splitlines() if l.startswith('MemAvailable:')))/1024
             if available<3072:raise ValueError('AVAILABLE_MEMORY_GATE')
             time.sleep(.05)
@@ -67,7 +79,7 @@ def run(name):
             except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.wait(timeout=3)
         cleanup(out,port)
         for f in files:f.close()
-        result=dict(status='EXECUTED' if error is None else 'FAILED',error=error,processes=trace,wall_s=time.monotonic()-start,original_launch_sha256=sha(original),binary_inputs=identity,Query_control=False,scope=case['scope'],source_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip());(out/'RUN.json').write_text(json.dumps(result,indent=2))
+        result=dict(status='EXECUTED' if error is None else 'FAILED',error=error,processes=trace,wall_s=time.monotonic()-start,original_launch_sha256=sha(original),binary_inputs=identity,Query_control=False,scope=case['scope'],source_identity=source_identity);(out/'RUN.json').write_text(json.dumps(result,indent=2))
     if error:raise ValueError(error)
     return json.loads((out/'GATEWAY_RESULT.json').read_text())
 
