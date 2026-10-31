@@ -12,7 +12,7 @@ def run(kind,run_id=None):
     out=BASE/run_id;out.mkdir(exist_ok=False)
     old=OLD/('run_moving_shadow.py' if kind=='moving' else 'run_native_watchdog_probe.py')
     s=old.read_text();s=s.replace("root=Path(__file__).resolve().parent;out=root/'"+('moving001' if kind=='moving' else 'watchdog001')+"';out.mkdir(exist_ok=False);port="+('11343' if kind=='moving' else '11344'),"root=Path("+repr(str(OLD))+");out=Path("+repr(str(out))+ ");port="+str(allowed[run_id]))
-    s=s.replace(' from experiments.pg2_stagec_pg3_preservation_v1.cleanup import cleanup',' sys.path.insert(0,str(Path('/home/lizheng/query_minco_mainline')))\n from experiments.pg2_stagec_pg3_preservation_v1.cleanup import cleanup')
+    s=s.replace(' from cleanup_owned_ros import cleanup'," sys.path.insert(0,'/home/lizheng/query_minco_mainline')\n from experiments.pg2_stagec_pg3_preservation_v1.cleanup import cleanup")
     observer=ROOT/'experiments/pg2_stagec_pg3_preservation_v1/lease_observer.py'
     s=s.replace("('yopo',[", "('lease',['/home/lizheng/anaconda3/envs/yopo/bin/python','-B','-s','-u',"+repr(str(observer))+",str(out)],Path('/home/lizheng/query_minco_mainline')),('yopo',[")
     generated=out/'EXECUTED_RUNNER.py';generated.write_text(s)
