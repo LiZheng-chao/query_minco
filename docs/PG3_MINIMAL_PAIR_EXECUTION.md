@@ -1,0 +1,11 @@
+# Minimal Mode paired execution v1
+
+Independent entry: experiments.pg3_minimal_pair_v1.executor. Only A/native PG2 Safe and query_minco_pg3_next_minimal_mode_v1 are accepted. Minimal loss is exactly original PG2 Safe + 0.010859947391365976 * original Mode/Fair. Braking retained, Stop/Geom/Keep/Div weights zero. No new ordinary training loss or network/validator modification.
+
+Preparation: python -m experiments.pg3_minimal_pair_v1.prepare --output /absolute/new/output. Requires clean committed source and pinned historical dependencies. Eight train-only gradient audits, CPU0 with threshold10/increment2, existing qualification short tests plus actual executor uninterrupted4 versus2+restore+2, inherited full regression tests. New-source qualification, frozen input bindings and formal RunSpec hashes are generated. Prior QP replay evidence is explicitly read-only historical regression evidence, not rerun new QP research.
+
+Formal dispatch: python -m experiments.pg3_minimal_pair_v1.executor --spec /qualified/A-or-MINIMAL.json --authorization /explicit-authority.json. Does not infer authorization. Authority binds exact spec digest, distinct PG3_MINIMAL_PAIRED128_V1 scope, 128 updates and exact execution resources. Both arms fixed Seed42/Batch8/FrozenOrder/C1 initialization, CPU FP32 single thread, original AdamW/cosine128 schedule, frozen score rows19/20. Limits per arm: wall1800s, RSS4096MiB, output4GiB, available memory3072MiB. No formal resume from failed runs. Existing path/duplicate commits, nonfinite/ratio/resource/data/source/checkpoint drifts stop execution. Formal output directory is separate from all historical runs.
+
+Original gradient and increment gates run before each optimizer update. Original open-Dev8 alarm runs at32/64/96/128 without tuning. Every update commits model/optimizer/exposure/RNG/monitor with original chain hashes. Reports retain hard/Goal/Oracle, query transitions, initial matched-safe degradation, verified face-signature coverage (not homotopy), native QA/QJ/QT and exact gradient/update-direction evidence. No control or flight dispatch exists.
+
+System work is read-only outside this repository. No copies of YOPO Controller/Simulator or changes to original baseline. Sensor mismatch and unknown swept body volume fail closed. No ROS Query control publisher or QP optimizer is added.
