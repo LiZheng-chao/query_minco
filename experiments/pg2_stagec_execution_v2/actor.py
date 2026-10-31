@@ -129,7 +129,7 @@ def main():
                     if elapsed>=protocol['stop_deadline_s']:
                         distance=max(np.linalg.norm(np.array(x['p'])-fallback_start['p']) for x in history);dz=max(abs(x['p'][2]-initial[2]) for x in history)
                         result=dict(status='DYNAMICS_STOP_PASS' if stopped and distance<=protocol['stop_displacement_limit_m'] and dz<=protocol['altitude_error_limit_m'] and 'unqualified_hold_reason' not in fallback else 'DYNAMICS_STOP_FAIL',trigger=trigger,fallback=fallback,initial=fallback_start,stopped_hold=stopped,maximum_stop_displacement_m=float(distance),maximum_altitude_error_m=float(dz),last_state=history[-1],FALLBACK_VERIFIED=False,online_volume='BLOCKED',motor_bounds='NOT_VERIFIED_NO_RPM_TELEMETRY',clock_scope='gateway clock-adapter injection only' if cfg['fault']=='clock_reset_adapter' else 'real ROS clock',Query_navigation=False);break
-                cmd=PositionCommand();cmd.header.stamp=rospy.Time.now();cmd.header.frame_id='world';cmd.trajectory_flag=0 if fault else cfg.get('controller_flag',0)
+                cmd=PositionCommand();cmd.header.stamp=rospy.Time.from_sec(now);cmd.header.frame_id='world';cmd.trajectory_flag=0 if fault else cfg.get('controller_flag',0)
                 for obj,value in zip([cmd.position,cmd.velocity,cmd.acceleration],desired):obj.x,obj.y,obj.z=map(float,value)
                 if armed:pub.publish(cmd);emit('COMMAND',sample_stamp=now,header_stamp=cmd.header.stamp.to_sec(),pva=desired.tolist(),flag=cmd.trajectory_flag,fault=fault,source_stamp=None if lease.plan is None else lease.plan['source_stamp'],last_valid_receipt=lease.rx)
             time.sleep(.02)
