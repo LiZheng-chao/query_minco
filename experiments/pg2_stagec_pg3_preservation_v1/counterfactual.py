@@ -27,7 +27,9 @@ def context(folder):
     spec=read(RUN/'RUN_SPEC.json');binding=read(artifact(spec['bindings']))
     code=dict(git_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),files=source_files(),allow_uncommitted_sources=True)
     # CPU-only disposable diagnostics. Preserve pre-existing untracked files; no formal qualification claim.
-    binding['code']=code;write(folder/'BINDINGS.json',binding)
+    binding['code']=code
+    reference=ROOT/'query_minco/methods/reference.json';require(sha(reference)==binding['historical_reference']['sha256'],'REFERENCE_CONTENT_CHANGED')
+    binding['historical_reference']=dict(path=str(reference),sha256=sha(reference));write(folder/'BINDINGS.json',binding)
     ref=dict(path=str((folder/'BINDINGS.json').resolve()),sha256=sha(folder/'BINDINGS.json'))
     prep,ctx=load_context(ref);write(folder/'DATA_QUALIFICATION.json',ctx[3]);write(folder/'SOURCE.json',dict(code=code,tracked_and_untracked_status=subprocess.check_output(['git','status','--porcelain'],text=True),formal_qualification=False))
     cfg=read(artifact(prep['configuration']));return spec,ctx,cfg
