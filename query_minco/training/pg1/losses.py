@@ -23,7 +23,7 @@ def analytic_samples(trajectory, points_per_segment=64):
     """New p/v/a/jerk helper; old segment_samples is never changed or relabelled."""
     c, dt = trajectory.coeffs, trajectory.durations
     finite(c, 'PG1_COEFFICIENTS'); finite(dt, 'PG1_DURATIONS')
-    require(c.ndim == 5 and c.shape[1:] == (6,3,3,6) and dt.shape == c.shape[:3], 'PG1_TRAJECTORY_SHAPE')
+    require(c.ndim == 5 and c.shape[1] in (1,6) and c.shape[2:] == (3,3,6) and dt.shape == c.shape[:3], 'PG1_TRAJECTORY_SHAPE')
     require(c.dtype == dt.dtype and c.device == dt.device, 'PG1_TRAJECTORY_TYPE')
     require(trajectory.solve_valid.shape == c.shape[:2] and trajectory.solve_valid.dtype == torch.bool and
             bool(trajectory.solve_valid.all()), 'PG1_INVALID_SOLVE')

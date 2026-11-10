@@ -19,11 +19,11 @@ class QueryMincoPlanner(nn.Module):
         self.config = config
         self.depth_encoder = DepthEncoder()
         self.state_encoder = StateEncoder()
-        self.query_decoder = QueryDecoder(config.dropout)
-        self.trajectory_head = TrajectoryHead()
+        self.query_decoder = QueryDecoder(config.dropout, num_queries=config.num_queries)
+        self.trajectory_head = TrajectoryHead(num_queries=config.num_queries)
 
     def forward(self, depth_input, state, return_diagnostics=False):
-        """Return raw [B,6,21], or (raw, diagnostics) when requested.
+        """Return raw [B,K,21] (K=1 or legacy default 6), or (raw, diagnostics) when requested.
 
         Raw: q1/q2/q3=0:9, vT=9:12, aT=12:15, total-time logit=15,
         segment logits=16:19, lower-is-better score=19, feasibility logit=20.

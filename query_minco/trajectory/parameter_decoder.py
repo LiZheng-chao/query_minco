@@ -37,13 +37,16 @@ class PhysicalParameterConfig:
 
 
 class PhysicalParameterDecoder:
-    def __init__(self, config=None):
+    def __init__(self, config=None, *, num_candidates=6):
+        if type(num_candidates) is not int or num_candidates not in (1, 6):
+            raise ValueError("num_candidates must be 1 or 6")
+        self.num_candidates = num_candidates
         self.config = config if config is not None else PhysicalParameterConfig()
         if not isinstance(self.config, PhysicalParameterConfig):
             raise TypeError("config must be PhysicalParameterConfig")
 
     def __call__(self, raw, state):
-        tensor(raw, "raw", (6, 21))
+        tensor(raw, "raw", (self.num_candidates, 21))
         tensor(state, "state", (12,))
         matching((raw, state))
         cfg = self.config
@@ -51,14 +54,14 @@ class PhysicalParameterDecoder:
             r, s = raw.float(), state.float()
             lower = r.new_tensor(cfg.position_min_m)
             upper = r.new_tensor(cfg.position_max_m)
-            points = lower + (r[..., :9].reshape(-1, 6, 3, 3).tanh() + 1) * 0.5 * (upper - lower)
+            points = lower + (r[..., :9].reshape(-1, self.num_candidates, 3, 3).tanh() + 1) * 0.5 * (upper - lower)
             velocity = r[..., 9:12].tanh() * r.new_tensor(cfg.terminal_velocity_axis_max_mps)
             acceleration = r[..., 12:15].tanh() * r.new_tensor(cfg.terminal_acceleration_axis_max_mps2)
             total = cfg.min_total_time_s + (cfg.max_total_time_s - cfg.min_total_time_s) * r[..., 15].sigmoid()
             weights = r[..., 16:19].softmax(dim=-1)
             durations = cfg.min_segment_time_s + (total - 3 * cfg.min_segment_time_s)[..., None] * weights
             head = torch.stack((torch.zeros_like(s[:, :3]), s[:, :3], s[:, 3:6]), dim=1)
-            head = head[:, None].expand(-1, 6, -1, -1)
+            head = head[:, None].expand(-1, self.num_candidates, -1, -1)
             tail = torch.stack((points[..., 2, :], velocity, acceleration), dim=-2)
             finite = torch.isfinite(head).all(dim=(-2, -1)) & torch.isfinite(tail).all(dim=(-2, -1))
             positive = (durations > 0).all(-1)

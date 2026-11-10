@@ -19,7 +19,7 @@ def _positive(value,name):
 def _trajectory(tr):
     c,d=tr.coeffs,tr.durations
     finite(c,'R1_COEFFS');finite(d,'R1_DURATION')
-    require(c.ndim==5 and c.shape[1:]==(6,3,3,6) and len(c)>0 and d.shape==c.shape[:3],'R1_TRAJECTORY_SHAPE')
+    require(c.ndim==5 and c.shape[1] in (1,6) and c.shape[2:]==(3,3,6) and len(c)>0 and d.shape==c.shape[:3],'R1_TRAJECTORY_SHAPE')
     require(c.dtype==d.dtype and c.device==d.device,'R1_TRAJECTORY_TYPE')
     require(tr.solve_valid.shape==c.shape[:2] and tr.solve_valid.dtype==torch.bool and bool(tr.solve_valid.all()),'R1_SOLVE_VALID')
     total=d.sum(-1)
@@ -52,7 +52,7 @@ def dynamic_quality_loss(trajectory,*,a_ref=8.,j_ref=100.,time_ref=2.2,enabled=Q
 
 def _distribution(values,weights):
     finite(values,'R1_RISK');finite(weights,'R1_TIME_WEIGHTS')
-    require(values.ndim==3 and values.shape[1]==6 and len(values)>0 and values.shape[-1]>=2 and weights.shape==values.shape,'R1_RISK_SHAPE')
+    require(values.ndim==3 and values.shape[1] in (1,6) and len(values)>0 and values.shape[-1]>=2 and weights.shape==values.shape,'R1_RISK_SHAPE')
     require(values.device==weights.device and values.dtype==weights.dtype and bool((weights>=0).all()) and bool((weights.sum(-1)>0).all()),'R1_TIME_MASS')
     return weights/weights.sum(-1,keepdim=True)
 

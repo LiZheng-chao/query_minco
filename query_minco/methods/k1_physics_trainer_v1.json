@@ -1,0 +1,46 @@
+{
+  "schema": "k1_physics_trainer_component_v1",
+  "trainer_id": "k1_shared_physics_L0_p0c_trainer_v1",
+  "optimizer_component": "k1_adamw_dead_rows_restore_moments_v1",
+  "objective_base": "physics_v12_phase_a_L0_K_normalized_v1",
+  "validator": "physics_v12_independent_hard_positive_duration_v2",
+  "network_architecture": "query_minco_k1_decoder2_raw21_v1",
+  "initializations": {
+    "A_random": {
+      "mode": "A_random",
+      "component_id": "A_random_seeded_k1_v1",
+      "architecture_changed": false,
+      "runtime_reference": false,
+      "uses_geometry": false,
+      "nominal_goal_m": [
+        2.4,
+        0.0,
+        0.0
+      ],
+      "final_physical_weight_scale": null
+    },
+    "A_reasonable": {
+      "mode": "A_reasonable",
+      "component_id": "A_nominal_forward24_stop_bias_v1",
+      "architecture_changed": false,
+      "runtime_reference": false,
+      "uses_geometry": false,
+      "nominal_goal_m": [
+        2.4,
+        0.0,
+        0.0
+      ],
+      "final_physical_weight_scale": 0.01
+    }
+  },
+  "source_sha256": {
+    "/home/lizheng/query_minco_mainline/query_minco/training/k1_physics_trainer_v1/__init__.py": "6b5ab479b7c377fa961ea389c2ebeab348e1f96f69413494c0783e20213ba84e",
+    "/home/lizheng/query_minco_mainline/query_minco/training/k1_physics_trainer_v1/optimizer.py": "4555d93e019a7b129df76fbc4bcd6fccd0ba613a28897750312bab48aaa44517",
+    "/home/lizheng/query_minco_mainline/query_minco/training/k1_physics_trainer_v1/initialization.py": "573cfacb047383bacab1b5e9be05f84cd292336d060467bb66ce10a44be48db5",
+    "/home/lizheng/query_minco_mainline/query_minco/training/k1_physics_trainer_v1/trainer.py": "4a2a6caaef273b91772de6a89cbcf668ec7ef7df32984cb0b14842722201b459",
+    "/home/lizheng/query_minco_mainline/query_minco/training/k1_physics_trainer_v1/cli.py": "894050d5e4cc735157faa8d8a5e279a0c1d3fbf1cdc01d49299b5be6a5031117",
+    "/home/lizheng/query_minco_mainline/experiments/g2a_k1_trainer_v1/run.py": "3b4599cc73880a5fae0f8928c5aeddd47d51b8a018eeb391ef45d5a6fe2efeeb",
+    "/home/lizheng/query_minco_mainline/tests/g2a_k1_trainer_v1/test_contracts.py": "a570411b8600d86ce53515e448ffbb3961cfe84bcd7d40ec111cf1f0c7bdfecb"
+  },
+  "formal_training_default": "DENY_WITHOUT_EXACT_RUNSPEC_APPROVAL"
+}

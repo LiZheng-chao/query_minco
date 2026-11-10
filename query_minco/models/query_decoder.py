@@ -1,4 +1,4 @@
-"""Six state-conditioned learnable queries; no fixed spatial anchors."""
+"""One or six state-conditioned learnable queries; no fixed spatial anchors."""
 import torch
 from torch import nn
 from ._validation import check_tensor
@@ -25,9 +25,11 @@ class QueryDecoderBlock(nn.Module):
 
 
 class QueryDecoder(nn.Module):
-    def __init__(self, dropout=0.0):
+    def __init__(self, dropout=0.0, *, num_queries=6):
         super().__init__()
-        self.learned_queries = nn.Parameter(torch.empty(6, 128))
+        if type(num_queries) is not int or num_queries not in (1, 6):
+            raise ValueError("num_queries must be 1 or 6")
+        self.learned_queries = nn.Parameter(torch.empty(num_queries, 128))
         nn.init.normal_(self.learned_queries, std=0.02)
         self.layers = nn.ModuleList([QueryDecoderBlock(dropout) for _ in range(2)])
 

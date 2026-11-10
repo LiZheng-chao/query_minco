@@ -17,9 +17,17 @@ class QueryMincoConfig:
     output_dim: int = 21
     dropout: float = 0.0
 
+    @property
+    def architecture_id(self):
+        return "query_minco_k1_decoder2_raw21_v1" if self.num_queries == 1 else "query_minco_p1_k6_raw21_v1"
+
     def __post_init__(self):
         for field, expected in zip(fields(self), (2, 128, 160, 12, 128, 6, 2, 4, 256, 21)):
             value = getattr(self, field.name)
+            if field.name == "num_queries":
+                if type(value) is not int or value not in (1, 6):
+                    raise ValueError("num_queries must be 1 or 6")
+                continue
             if type(value) is not int or value != expected:
                 raise ValueError("P1 fixes {}={} (got {!r})".format(field.name, expected, value))
         if isinstance(self.dropout, bool) or not isinstance(self.dropout, (int, float)):

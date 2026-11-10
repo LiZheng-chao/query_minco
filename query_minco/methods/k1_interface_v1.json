@@ -1,0 +1,32 @@
+{
+  "schema": "g1_k1_component_binding_v1",
+  "method_id": "physics_v12_k1_raw21_A_p0c_L0_interface_v1",
+  "architecture_id": "query_minco_k1_decoder2_raw21_v1",
+  "decoder_id": "raw21_absolute_fixed2s_three_segment_k1_v1",
+  "objective_id": "physics_v12_phase_a_L0_K_normalized_v1",
+  "validator_id": "physics_v12_independent_hard_positive_duration_v2",
+  "raw_dim": 21,
+  "candidates": 1,
+  "total_time_s": 2.0,
+  "segments": 3,
+  "formal_training_authorized": false,
+  "base_loss": "physics_only_v1_2_huber_goal_allquery_v1 Phase A foundation",
+  "p0c_geometry_component": "exact_known_world_trace_minus_roi_projection_distance_v1",
+  "source_sha256": {
+    "query_minco/models/config.py": "72c497572e9477d9fe951b854abc27eb84e26ec9f471182a6f6c90ddaaabef89",
+    "query_minco/models/planner.py": "1e3094e4219e86a75efdbe4904b89758fa730698a1ab4c853a017eaed4ba03db",
+    "query_minco/models/query_decoder.py": "2dc1a008aca0031cdd3e70dcc2d6999cc9a0fe0a4fff91eb425e1345ecfd78a9",
+    "query_minco/models/trajectory_head.py": "12efa447d31874789c0aca9b733fd5e1908d621250eb24f7ad99474a3378ba2c",
+    "query_minco/trajectory/parameter_decoder.py": "fc673226e0b3813fe29cf131d3da87e316a7f6568ee5e420fee9aeea613fbf5b",
+    "query_minco/trajectory/minco_adapter.py": "905aa3dc80efe0a923a16d6484b1f519eb5f63c309be4b761e52c0b8566775af",
+    "query_minco/training/physics_only_v1/decoder.py": "7ce054e200b0a6495f63b60e2474cff92a30f9f06afa290af14fd98585b54ccb",
+    "query_minco/training/pg1/losses.py": "8d37418725e7d8868993231f36b73545b4349d22a84b331c5e07f9601e22720a",
+    "query_minco/training/pg1_v2_r1/losses.py": "058d8022b770bf9cbdfc57d23c35f4b90ae5c64e9bbb029f182c67ade8999048",
+    "query_minco/training/physics_only_v1_2/goal_v12.py": "61f26bf04015db39fdcd191fa1d7b72870baa903cbee8fd6f60eabfcf42f9875",
+    "query_minco/training/physics_only_v1_2/costs_v12.py": "542ec00b42aa4063010c5e913a9cd1243b501d2f61b3cd254ada13d9980434d3",
+    "query_minco/training/physics_only_v1_2/set_objective_v12.py": "a74c6b5ac990d5004b906421b012f67f7dff429c69c847de792fb18f12fb1649",
+    "query_minco/training/physics_only_v1_2_gate1/objective.py": "ba524e8459af686d85f8e25e792094d2f5cd923f9bda89fba409d9c676ac03b3",
+    "query_minco/training/physics_only_v1_2_gate1/roi_safe_training.py": "03c4cdbd67530ffb96fd096460c1a88ceff971168955472c123ba0e8e4ee1fdf",
+    "query_minco/training/physics_only_v1_2_gate1/k1_interface.py": "047406d7b20e2deb15d74b779da001e8aec4da35bbfa4abac24ba9b9858ae2a8"
+  }
+}

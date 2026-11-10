@@ -46,10 +46,15 @@ class MincoAdapter:
     min_supported_segment_s = 1e-3
     max_supported_segment_s = 10.0
 
+    def __init__(self, *, num_candidates=6):
+        if type(num_candidates) is not int or num_candidates not in (1, 6):
+            raise ValueError("num_candidates must be 1 or 6")
+        self.num_candidates = num_candidates
+
     def __call__(self, head_pva, tail_pva, inner_pts, durations):
         values = (head_pva, tail_pva, inner_pts, durations)
         for value, name, shape in zip(values, ("head_pva", "tail_pva", "inner_pts", "durations"),
-                                      ((6, 3, 3), (6, 3, 3), (6, 2, 3), (6, 3))):
+                                      ((self.num_candidates, 3, 3), (self.num_candidates, 3, 3), (self.num_candidates, 2, 3), (self.num_candidates, 3))):
             tensor(value, name, shape, fp32=True)
         matching(values)
         if not bool(((durations >= self.min_supported_segment_s) &
@@ -65,7 +70,7 @@ class MincoAdapter:
                                       inner_pts.reshape(-1, 2, 3), durations.reshape(-1, 3))
             except RuntimeError as error:
                 raise NumericalSolveError("original MINCO linear solve failed: " + str(error)) from error
-            coeffs = solver.coeffs.reshape(batch, 6, 3, 6, 3).permute(0, 1, 2, 4, 3).contiguous()
+            coeffs = solver.coeffs.reshape(batch, self.num_candidates, 3, 6, 3).permute(0, 1, 2, 4, 3).contiguous()
             if coeffs.dtype != torch.float32 or not bool(torch.isfinite(coeffs).all()):
                 raise NumericalSolveError("MINCO returned nonfinite or non-FP32 coefficients")
             with torch.no_grad():
