@@ -26,16 +26,19 @@ def kill_family(root,sig=signal.SIGKILL):
 
 def stop_plant(process,guard,reason):
  errors=[]
- if process is None:return None,errors
+ if process is None:return None,['PLANT_NOT_STARTED']
  try:
   if guard is None:raise RuntimeError('NO_INITIALIZED_PROCESS_GUARD')
-  return guard.stop(reason),errors
- except BaseException as e:
-  errors.append(repr(e))
-  if process.poll() is None:
-   try:os.killpg(process.pid,signal.SIGSTOP);os.killpg(process.pid,signal.SIGKILL)
-   except ProcessLookupError:pass
-  try:code=process.wait(timeout=5)
-  except BaseException as error:
-   errors.append(repr(error));return dict(terminal_state='STOP_NOT_CONFIRMED',actual_exit_code=None),errors
-  return dict(terminal_state='OWNED_PROCESS_TERMINATED',actual_exit_code=code,stop_state_observed=False,fallback=True),errors
+  result=guard.stop(reason)
+  if result.get('terminal_state')!='OWNED_PROCESS_TERMINATED':
+   errors.extend(result.get('errors') or ['STOP_NOT_CONFIRMED'])
+  return result,errors
+ except Exception as error:
+  # No unverified killpg fallback or leader-only success conversion.
+  return dict(terminal_state='STOP_NOT_CONFIRMED',actual_exit_code=None),[repr(error)]
+
+def plant_exit_event(terminal,monotonic):
+ confirmed=bool(terminal and terminal.get('terminal_state')=='OWNED_PROCESS_TERMINATED'
+                and terminal.get('actual_exit_code') is not None)
+ return dict(event='PLANT_EXIT_CONFIRMED' if confirmed else 'PLANT_STOP_NOT_CONFIRMED',
+             monotonic=monotonic,terminal=terminal)

@@ -4,7 +4,7 @@ import sys,json,os,time,uuid,socket,signal,subprocess,argparse,xmlrpc.client,thr
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from query_minco.integration.yopo_execution_v4.lifecycle import Lifecycle,atomic_json
 from query_minco.integration.yopo_execution_v4.metrics import summarize
-from query_minco.integration.yopo_execution_v4.owned import family,alive,kill_family,stop_plant
+from query_minco.integration.yopo_execution_v4.owned import family,alive,kill_family,stop_plant,plant_exit_event
 from query_minco.integration.birth_execution_v1.evidence import CASES,expected_fault,predecessor,legacy_window
 from query_minco.integration.yopo_control_supervisor_v1.lease import parent_death_preexec
 from query_minco.integration.owned_stop_v2.stop import OwnedProcessStop
@@ -113,7 +113,7 @@ def episode(root,stage,case,binding,env,scene):
   if terminal and terminal['terminal_state']!='STOP_NOT_CONFIRMED':
    terminal.update(stop_requested_monotonic=stop_begin,stop_confirmed_monotonic=stop_time,exit_observed_monotonic=stop_time)
    atomic_json(out/'STOP_CONFIRMED.json',dict(monotonic=stop_time,ros_time=time.time(),terminal=terminal))
-  owner_events.append(dict(event='PLANT_EXIT_CONFIRMED',monotonic=stop_time))
+  owner_events.append(plant_exit_event(terminal,stop_time))
   if tracker is not None:
    tracker.join(2)
    if tracker.is_alive():stop_errors.append('IDENTITY_TRACKER_SHUTDOWN_TIMEOUT')

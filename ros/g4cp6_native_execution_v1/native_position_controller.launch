@@ -1,0 +1,21 @@
+<launch><arg name="prefix" default="/p2" /><node pkg="nodelet" type="nodelet" args="standalone so3_control/SO3ControlNodelet" name="p6_native_position_controller" required="true" output="screen">
+        <param name="so3_control/init_state_x" value="0.0" />
+        <param name="so3_control/init_state_y" value="0.0" />
+        <param name="so3_control/init_state_z" value="2.0" />
+        <remap from="~odom" to="$(arg prefix)/odom" />
+        <remap from="~imu" to="$(arg prefix)/imu" />
+        <remap from="~position_cmd" to="$(arg prefix)/position_cmd" />
+        <remap from="~motors" to="$(arg prefix)/motors" />
+        <remap from="~corrections" to="$(arg prefix)/corrections" />
+        <remap from="~so3_cmd" to="$(arg prefix)/so3_raw" />
+        <rosparam file="/home/lizheng/YOPO/Controller/src/so3_control/config/gains_hummingbird.yaml" />
+        <rosparam file="/home/lizheng/YOPO/Controller/src/so3_control/config/corrections_hummingbird.yaml" />
+        <param name="mass" value="0.98" />
+        <param name="use_angle_corrections " value="false" />
+        <param name="use_external_yaw " value="false" />
+        <param name="gains/rot/z" value="1.0" />    
+        <param name="gains/ang/z" value="0.1" />     
+        <param name="record_log" value="false" />  
+        <param name="PID_logger_file_name" value="$(find so3_control)/logger/" />   
+  </node>  
+</launch>
