@@ -41,7 +41,7 @@ def build(p,v,a,q,goal,epoch):
  return Plan(rec)
 class Admission:
  def __init__(self):self.plan=None
- def check(self,envelope,state,now,certify=None):
+ def check(self,envelope,state,now,certify=None,prepared=None):
   pva=np.asarray(envelope['pva'],float)
   if pva.shape!=(3,3) or not np.isfinite(pva).all() or np.linalg.norm(pva[1])>1+1e-6 or np.linalg.norm(pva[2])>8+1e-6:raise ValueError('REQUEST_PVA')
   committed=self.plan
@@ -50,7 +50,8 @@ class Admission:
   else:
    rec=envelope['plan'];identity=digest(rec)
    if self.plan is None or self.plan.id!=identity:
-    new=Plan(rec)
+    if prepared is not None and (not isinstance(prepared,Plan) or prepared.id!=identity):raise ValueError("PREPARED_PLAN_IDENTITY")
+    new=Plan(rec) if prepared is None else prepared
     if not 0<=now-new.epoch<=.2:raise ValueError('PLAN_AGE')
     actual=np.stack([state['p'],state['v'],state['a']])
     if any(np.linalg.norm(new.sample(0)[k]-actual[k])>tol for k,tol in enumerate([.05,.1,.5])):raise ValueError('INITIAL_PVA')

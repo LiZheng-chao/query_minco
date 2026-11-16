@@ -97,6 +97,16 @@ class Frame:
   result=(free_full.reshape(shape),occ_full.reshape(shape),visible_full.reshape(shape))
   self.cache={key:result}
   return result
+def birth_covers_intersection(lo,hi,p,r,birth):
+ """A conservative AABB enclosing cell intersect query-ball, not FREE carving."""
+ p=np.asarray(p);lo=np.asarray(lo);hi=np.asarray(hi)
+ delta=np.maximum(np.maximum(lo-p,p-hi),0.)
+ d2=delta*delta;other=d2.sum(axis=-1,keepdims=True)-d2
+ extent=np.sqrt(np.maximum(0.,(r+1e-12)**2-other))
+ left=np.maximum(lo,p-extent);right=np.minimum(hi,p+extent)
+ far=np.maximum(np.abs(left-np.asarray(birth.center)),np.abs(right-np.asarray(birth.center)))
+ return (left<=right).all(axis=-1)&(np.linalg.norm(far,axis=-1)<=birth.radius-1e-12)
+
 class Snapshot:
  def __init__(self,states,origin,cfg,frames,now,epoch,epoch_getter):
   self.states=states.copy();self.states.flags.writeable=False;self.origin=np.asarray(origin).copy();self.origin.flags.writeable=False;self.cfg=cfg;self.frames=frames;self.now=now;self.epoch=epoch;self._epoch_getter=epoch_getter
@@ -112,25 +122,61 @@ class Snapshot:
   ids=np.stack(np.meshgrid(*[np.arange(a,b+1) for a,b in zip(low,high)],indexing='ij'),-1).reshape(-1,3)
   lo=self.origin+ids*h;nearest=np.minimum(np.maximum(p,lo),lo+h);intersect=np.linalg.norm(nearest-p,axis=1)<=radius+1e-12;ids=ids[intersect]
   values=self.states[tuple(ids.T)];n_unknown=int((values==UNKNOWN).sum());n_occupied=int((values==OCCUPIED).sum())
+  birth=getattr(self,'birth_ball',None)
+  contained=bool(birth is not None and np.linalg.norm(p-np.asarray(birth.center))+radius<=birth.radius)
+  if contained and not n_occupied:return dict(passed=True,reason='FINITE_ENGINEERING_BIRTH_BALL',unknown_covered_by_birth=n_unknown,snapshot=self.id)
+  covered=0
+  if birth is not None and n_unknown:
+   cell_lo=self.origin+ids*h
+   cover=(values==UNKNOWN)&birth_covers_intersection(cell_lo,cell_lo+h,p,radius,birth)
+   covered=int(cover.sum());n_unknown-=covered
   return dict(passed=not(n_unknown or n_occupied),reason='KNOWN_FREE' if not(n_unknown or n_occupied) else ('OCCUPIED_ENVELOPE' if n_occupied else 'UNKNOWN_CELLS'),
-   world=p.tolist(),radius=radius,cells=len(ids),unknown=n_unknown,occupied=n_occupied,snapshot=self.id)
+   world=p.tolist(),radius=radius,cells=len(ids),unknown=n_unknown,unknown_covered_by_birth=covered,occupied=n_occupied,snapshot=self.id)
  def certify(self,plan,now,start=0.):
   begin=time.perf_counter();self.current(now)
   times=np.linspace(max(0,float(start)),float(plan.d.sum()),129);pad=plan.maxima[0]*float(times[1]-times[0])/2
   radius=.15+.15+pad;points=np.stack([plan.sample(t)[0] for t in times]);h=self.cfg.resolution
   low=np.floor((points-radius-self.origin)/h).astype(int);high=np.floor((points+radius-self.origin)/h).astype(int)
   outside=((low<0)|(high>=np.asarray(self.cfg.shape))).any(1)
+  birth=getattr(self,'birth_ball',None)
+  if birth is not None and not outside.any() and not (self.states==OCCUPIED).any() and (np.linalg.norm(points-np.asarray(birth.center),axis=1)+radius<=birth.radius).all():
+   # Exact finite-birth containment plus absence of ANY occupied ROI cell.
+   # This is stronger than the original per-sample occupied-cell check.
+   self.current(now)
+   if time.perf_counter()-begin>self.cfg.query_budget_s:raise BudgetExceeded('CURVE_CERTIFICATION_DEADLINE')
+   return dict(passed=True,snapshot=self.id,epoch=self.epoch,valid_until=self.valid_until,sources=[f['id'] for f in self.frames],query_s=time.perf_counter()-begin,scope='FINITE_BIRTH_ALL_QUERY_BALLS_CONTAINED')
   n=int(math.ceil(radius/h))+1
   offsets=np.stack(np.meshgrid(*[np.arange(-n,n+1)]*3,indexing='ij'),-1).reshape(-1,3)
-  base=np.floor((points-self.origin)/h).astype(int)
-  ids=base[:,None,:]+offsets[None,:,:]
-  in_grid=((ids>=0)&(ids<np.asarray(self.cfg.shape))).all(2)
-  lo=self.origin+ids*h;near=np.minimum(np.maximum(points[:,None,:],lo),lo+h)
-  intersect=np.linalg.norm(near-points[:,None,:],axis=2)<=radius+1e-12
-  clipped=np.clip(ids,0,np.asarray(self.cfg.shape)-1)
-  values=self.states[tuple(clipped.transpose(2,0,1))]
-  occupied=((values==OCCUPIED)&intersect&in_grid).sum(1)
-  unknown=((values==UNKNOWN)&intersect&in_grid).sum(1)
+  # Cache exact geometric cell incidence, NOT occupancy or permission.
+  key=(tuple(self.origin),tuple(self.cfg.shape),h,radius,points.tobytes())
+  cache=getattr(plan,'_cell_incidence',None)
+  if cache is None or cache[0]!=key:
+   rows=[];cols=[]
+   for first in range(0,len(points),16):
+    chunk=points[first:first+16];base=np.floor((chunk-self.origin)/h).astype(int)
+    ids=base[:,None,:]+offsets[None,:,:]
+    in_grid=((ids>=0)&(ids<np.asarray(self.cfg.shape))).all(2)
+    lo=self.origin+ids*h;near=np.minimum(np.maximum(chunk[:,None,:],lo),lo+h)
+    intersect=np.linalg.norm(near-chunk[:,None,:],axis=2)<=radius+1e-12
+    ri,ci=np.nonzero(intersect&in_grid)
+    rows.append(ri+first);cols.append(np.ravel_multi_index(ids[ri,ci].T,self.cfg.shape))
+   row=np.concatenate(rows);col=np.concatenate(cols)
+   cache=(key,row,col);plan._cell_incidence=cache
+  _,row,col=cache
+  values=self.states.ravel()[col]
+  occupied=np.bincount(row,weights=values==OCCUPIED,minlength=len(points)).astype(int)
+  unknown=np.bincount(row,weights=values==UNKNOWN,minlength=len(points)).astype(int)
+  birth=getattr(self,'birth_ball',None)
+  if birth is not None:
+   contained=np.linalg.norm(points-np.asarray(birth.center),axis=1)+radius<=birth.radius
+   unknown[contained]=0 # Exact containment, not blanket UNKNOWN -> FREE.
+   selection=(values==UNKNOWN)&~contained[row]
+   if selection.any():
+    ids=np.stack(np.unravel_index(col[selection],self.cfg.shape),axis=1)
+    lo=self.origin+ids*h
+    covered=birth_covers_intersection(lo,lo+h,points[row[selection]],radius,birth)
+    subtract=np.bincount(row[selection][covered],minlength=len(points)).astype(int)
+    unknown-=subtract
   bad=np.flatnonzero(outside|(occupied>0)|(unknown>0))
   self.current(now)
   if time.perf_counter()-begin>self.cfg.query_budget_s:raise BudgetExceeded('CURVE_CERTIFICATION_DEADLINE')

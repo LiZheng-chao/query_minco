@@ -4,6 +4,9 @@ import sys,argparse,json,time,collections
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 def main():
  p=argparse.ArgumentParser();p.add_argument('--run',required=True);p.add_argument('--stage',choices=['C','D','E'],required=True);a=p.parse_args()
+ if a.stage=='E':
+  from query_minco.integration.depth_minco_t2_v1.ros_bridge import reference_main
+  return reference_main(a)
  import rospy,numpy as np,torch
  from nav_msgs.msg import Odometry
  from sensor_msgs.msg import Imu,Image
@@ -12,6 +15,7 @@ def main():
  from query_minco.integration.yopo_execution_v4.trajectory import build
  from query_minco.integration.yopo_execution_v4.sensor_space import ObservedSpace
  from query_minco.integration.forest_fix2_v1.contract import certify
+ from query_minco.integration.f0_continuity_v1.worker import Preparation
  torch.set_num_threads(1);run=Path(a.run);out=run/'reference_data';out.mkdir();journal=Journal(out/'EVENTS.jsonl');rospy.init_node('p2_deterministic_reference')
  cache={};poses=collections.OrderedDict();anchor=None;active=None;plan=None;target=None;done=False;count=0;replans=0;last_plan=0.;errors=[];motion_start=None
  def store(k,m):
@@ -26,6 +30,7 @@ def main():
     poses[s]=dict(p=[q.position.x,q.position.y,q.position.z],v=[v.x,v.y,v.z],q=[q.orientation.x,q.orientation.y,q.orientation.z,q.orientation.w])
     while len(poses)>512:poses.popitem(last=False)
  subs=[rospy.Subscriber('/p2/odom',Odometry,lambda m:store('odom',m),queue_size=10),rospy.Subscriber('/p2/imu',Imu,lambda m:store('imu',m),queue_size=10),rospy.Subscriber('/p2/depth',Image,lambda m:store('depth',m),queue_size=2)]
+ worker=Preparation(build)
  pub=rospy.Publisher('/p2/request',String,queue_size=1);rate=rospy.Rate(100)
  try:
   while not rospy.is_shutdown():
@@ -41,24 +46,19 @@ def main():
    pva=np.stack([anchor,np.zeros(3),np.zeros(3)])
    if active and time.monotonic()-active>=1. and a.stage in ['D','E']:
     try:
-     if plan is None or (a.stage=='D' and replans==1 and now-last_plan>=1.8):
-      begin=time.perf_counter();goal=target.copy();space=None
-      if a.stage=='E':
-       image=c.get('depth')
-       if image is None or image.header.stamp.to_sec() not in pose_cache or now-image.header.stamp.to_sec()>.2:raise ValueError('NO_MATCHED_DEPTH')
-       d=np.ndarray((image.height,image.width),dtype='<f4',buffer=image.data,strides=(image.step,4)).copy()
-       space=ObservedSpace(d,pose_cache[image.header.stamp.to_sec()],image.header.stamp.to_sec())
-       goal=space.search_goal(pos,target)
-      candidate=build(pos,np.array(state['v']),acceleration,state['q'],goal,s)
+     if (plan is None or (a.stage=='D' and replans==1 and now-last_plan>=1.8)) and worker.future is None:
+      worker.submit(pos.copy(),np.array(state['v']),acceleration.copy(),list(state['q']),target.copy(),s)
+     candidate=worker.take()
+     if candidate is not None:
       certify(run,plan=candidate,now=rospy.Time.now().to_sec())
-      if space:space.certify(candidate)
-      elapsed=time.perf_counter()-begin
-      if elapsed>.15 or rospy.Time.now().to_sec()-s>.2:raise ValueError('PLANNING_DEADLINE')
+      elapsed=rospy.Time.now().to_sec()-candidate.epoch
+      if not 0<=elapsed<=.2:raise ValueError('PLAN_AGE')
       plan=candidate;last_plan=now;replans+=1
       if motion_start is None:motion_start=plan.epoch
       journal.append(dict(kind='plan',monotonic=time.monotonic(),epoch=plan.epoch,plan=plan.record,planning_s=elapsed,maxima=plan.maxima,solver_errors=plan.errors,plan_id=plan.id,replans=replans))
-     pva=plan.at(now)
-     if a.stage=='D' and now-plan.epoch>2.5:pva=np.stack([target,np.zeros(3),np.zeros(3)]);done=True
+     # Before the first plan the independently admitted finite-birth hold remains.
+     if plan is not None:pva=plan.at(now)
+     if a.stage=='D' and plan is not None and now-plan.epoch>2.5:pva=np.stack([target,np.zeros(3),np.zeros(3)]);done=True
      if a.stage=='E' and replans>=20 and pos[0]-anchor[0]>=2.:done=True
     except Exception as e:
      errors.append(repr(e));journal.append(dict(kind='planning_rejected',monotonic=time.monotonic(),reason=repr(e)))
@@ -75,6 +75,7 @@ def main():
  except rospy.ROSInterruptException:pass
  except BaseException as e:errors.append(repr(e))
  finally:
+  worker.close()
   cleanup=journal.close([s.unregister for s in subs]);atomic_json(out/'RESULT.json',dict(status='PASS' if not errors and not cleanup and (run/'STOP_CONFIRMED.json').exists() else 'FAIL',errors=errors,cleanup_errors=cleanup,replans=replans))
  if errors or cleanup:raise SystemExit(2)
 if __name__=='__main__':main()

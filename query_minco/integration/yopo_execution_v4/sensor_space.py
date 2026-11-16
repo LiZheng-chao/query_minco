@@ -33,7 +33,12 @@ class ObservedSpace:
     w=(u[0]+dx,u[1]+dy);q=start+np.array([w[0]*h,w[1]*h,0])
     if abs(w[0])>15 or abs(w[1])>10:continue
     n=max(2,int(np.linalg.norm(q-p)/.05)+1)
-    if not all(self.ball_free(x,.30+.03) for x in np.linspace(p,q,n)):continue
+    clear=True
+    for x in np.linspace(p,q,n):
+     if not self.ball_free(x,.30+.03):
+      if hasattr(self,'edge_rejected'):self.edge_rejected(p,q,x,.30+.03)
+      clear=False;break
+    if not clear:continue
     new=cost[u]+h*np.hypot(dx,dy)
     if new<cost.get(w,float('inf')):
      cost[w]=new;parent[w]=u;heapq.heappush(frontier,(new+float(np.linalg.norm(q-goal)),w))
