@@ -1,0 +1,13 @@
+# Development workflow proposal (researcher review draft)
+Current software baseline:610270e159a24daff626acee17ed39112d320835; runtime identities must always be re-read, never assume this remains latest.
+Official development directory:/home/lizheng/query_minco_mainline. Use a Git feature branch in that SAME directory. No default new worktree; never duplicate query_minco per experiment.
+At entry record branch/HEAD/tracked/staged/untracked and explicit write whitelist. Preserve/reconcile existing changes; do not clean/reset/unstage without authorization. Known unrelated untracked files are not a clean tracked tree and must be disclosed.
+Before physical runs, freeze current source/assets/binding and run required same-version qualification. A Git branch or matching code SHA alone is not execution authority.
+Exception: retain existing old T2 frozen tree through its already qualified S -> manual C7 -> F0 chain. Do not switch/delete/edit it. Mainline does not inherit that physics PASS.
+Current K1 route: k1_forest_v1 trainer -> k1_interface.make_objective -> RoiSafeTrainingObjective -> original Phase-A L0/P0c -> fixed-T2 three-segment MINCO; no imitation/Hungarian training. No new training authorized by workflow.
+Current states: T1 physical C7 raw7/7 reviewed in previous audit; old T2 F0 S physical PASS/0 integration; new C7 and F0 NOT_RUN. F1 outside-birth routing remains NO-GO.
+Source belongs models/trajectory/training/integration, ros, tests. experiments/<id> contains thin entry/config references, not copied core algorithms. Outputs/data/manifests/weights/logs belong unique research_outputs/<id> or explicitly bound external roots.
+Retain historical results, data/checkpoint/source SHA, licenses and method identities. Unknown cannot become FREE; privileged geometry only offline objective/independent evaluation, never online route oracle. No automatic training/ARM.
+For code changes: scoped feature branch, relevant tests, CHANGED_FILES.md/full diff, explicit git add whitelist, full staged review and secret/artifact scan, feature commit with tests/impact. Push/merge stable requires separate researcher authorization, then re-read live remote SHA/content. Never directly push stable automatically.
+Historical06/09 norms retain protection/whitelists/evidence but stale HEADs, imitation-mainline descriptions and default worktrees are superseded by this proposal and current explicit researcher instruction. Do not overwrite old templates.
+Local excluded assets remain necessary; GitHub source presence is not clean-clone physical reproducibility. Remote network failure must be reported UNVERIFIED.
