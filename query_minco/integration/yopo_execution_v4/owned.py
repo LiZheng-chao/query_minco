@@ -1,6 +1,7 @@
 """PID-start-time-bound ownership;never pkill arbitrary ROS processes."""
 from pathlib import Path
 import os,signal
+from query_minco.integration.owned_stop_v2.stop import OwnedProcessStop
 def identity(pid):
  try:
   x=Path('/proc/%d/stat'%pid).read_text().rsplit(')',1)[1].split()
@@ -25,17 +26,28 @@ def kill_family(root,sig=signal.SIGKILL):
  return rows
 
 def stop_plant(process,guard,reason):
- errors=[]
  if process is None:return None,['PLANT_NOT_STARTED']
+ errors=[]
  try:
   if guard is None:raise RuntimeError('NO_INITIALIZED_PROCESS_GUARD')
   result=guard.stop(reason)
-  if result.get('terminal_state')!='OWNED_PROCESS_TERMINATED':
-   errors.extend(result.get('errors') or ['STOP_NOT_CONFIRMED'])
-  return result,errors
+  if result.get('terminal_state')=='OWNED_PROCESS_TERMINATED':
+   return result,errors
+  errors.extend(result.get('errors') or ['STOP_NOT_CONFIRMED'])
  except Exception as error:
-  # No unverified killpg fallback or leader-only success conversion.
-  return dict(terminal_state='STOP_NOT_CONFIRMED',actual_exit_code=None),[repr(error)]
+  errors.append(repr(error))
+  result=dict(terminal_state='STOP_NOT_CONFIRMED',actual_exit_code=None)
+ # Attempt trusted emergency cleanup NOW, before launcher waits for other nodes.
+ # Never convert a failed primary STOP into a passing acceptance.
+ if isinstance(guard, OwnedProcessStop) and guard.process is process:
+  result['emergency']=guard.emergency_stop(reason)
+  if result['emergency']['confirmed']:
+   result['actual_exit_code']=result['emergency']['actual_exit_code']
+  else:
+   errors.append(result['emergency'].get('error','EMERGENCY_STOP_NOT_CONFIRMED'))
+ else:
+  errors.append('NO_TRUSTED_EMERGENCY_GUARD')
+ return result,errors
 
 def plant_exit_event(terminal,monotonic):
  confirmed=bool(terminal and terminal.get('terminal_state')=='OWNED_PROCESS_TERMINATED'

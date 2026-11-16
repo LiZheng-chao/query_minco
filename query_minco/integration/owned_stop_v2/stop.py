@@ -131,3 +131,52 @@ class OwnedProcessStop:
               terminal_state='STOP_NOT_CONFIRMED' if errors else 'OWNED_PROCESS_TERMINATED',
               errors=errors, elapsed_s=time.monotonic()-begin, events=events,
               criterion='trustworthy leader exit and no live owned session/group members')
+
+ def emergency_stop(self, reason, timeout=.25):
+  """Immediate identity-checked KILL, never a replacement for failed acceptance."""
+  p = self.process
+  events = getattr(self, 'events', [])
+  self.events = events
+  begin = time.monotonic()
+  deadline = begin + timeout
+  def mark(event, **kwargs):
+   events.append(dict(event=event, monotonic=time.monotonic(), **kwargs))
+  mark('EMERGENCY_STOP_BEGIN', reason=reason)
+  try:
+   # Never poll/reap before validating and signalling the reserved child PID.
+   if p.returncode is None:
+    if identity(p.pid)[1] != self.start_ticks or os.getpgid(p.pid) != p.pid or os.getsid(p.pid) != p.pid:
+     raise RuntimeError('EMERGENCY_IDENTITY_NOT_TRUSTED')
+    mark('EMERGENCY_SIGKILL_BEGIN')
+    try:
+     os.killpg(p.pid, signal.SIGKILL)
+    except ProcessLookupError:
+     mark('EMERGENCY_SIGKILL_ESRCH')
+    else:
+     mark('EMERGENCY_SIGKILL_SENT')
+    mark('EMERGENCY_WAITPID_BEGIN')
+    while p.returncode is None:
+     try:
+      pid, status = os.waitpid(p.pid, os.WNOHANG)
+     except InterruptedError:
+      pid = 0
+     if pid:
+      if os.WIFSIGNALED(status):
+       p.returncode = -os.WTERMSIG(status)
+      elif os.WIFEXITED(status):
+       p.returncode = os.WEXITSTATUS(status)
+      else:
+       raise RuntimeError('EMERGENCY_NONTERMINAL_WAIT_STATUS')
+     if time.monotonic() >= deadline:
+      raise TimeoutError('EMERGENCY_EXIT_TIMEOUT')
+     if p.returncode is None:
+      time.sleep(.0005)
+   while members(p.pid):
+    if time.monotonic() >= deadline:
+     raise TimeoutError('EMERGENCY_MEMBERS_REMAIN')
+    time.sleep(.0005)
+   mark('EMERGENCY_EXIT_CONFIRMED', exit_code=p.returncode)
+   return dict(confirmed=True, actual_exit_code=p.returncode, elapsed_s=time.monotonic()-begin)
+  except Exception as error:
+   mark('EMERGENCY_STOP_NOT_CONFIRMED', error=repr(error))
+   return dict(confirmed=False, actual_exit_code=None, error=repr(error), elapsed_s=time.monotonic()-begin)

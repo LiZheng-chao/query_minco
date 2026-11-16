@@ -10,7 +10,7 @@ from query_minco.integration.yopo_control_supervisor_v1.lease import parent_deat
 from query_minco.integration.owned_stop_v2.stop import OwnedProcessStop
 from query_minco.evaluation.mirror_holdout_v1 import sha,write
 R=Path.cwd();O=R/'research_outputs/stop_latency_fix_20261116_v1';PY='/home/lizheng/anaconda3/envs/yopo/bin/python'
-BIRTH=json.loads((O/'BIRTH_SELECTION.json').read_text());CENTER=BIRTH['selected']['position']
+BIRTH=None;CENTER=None
 def claim(path):
  p=Path(path).resolve()
  if (R/'research_outputs').resolve() not in p.parents:raise ValueError('OUTPUT_ROOT')
@@ -122,6 +122,13 @@ def episode(root,stage,case,binding,env,scene):
   # Let callback-owning Python nodes observe the confirmed plant stop and close journals themselves.
   for name,folder,p,so,se,began in reversed(owned):
    owner_events.append(dict(event='CHILD_CLEANUP_BEGIN',name=name,monotonic=time.monotonic()))
+   if p is plant and (not terminal or terminal.get('terminal_state')=='STOP_NOT_CONFIRMED'):
+    # Trusted emergency stop has already run; no unchecked group signals.
+    code=p.returncode;so.close();se.close()
+    row=dict(pid=p.pid,actual_exit_code=code,stop_not_confirmed=True,elapsed_s=time.monotonic()-began,stdout_sha256=sha(folder/'stdout.log'),stderr_sha256=sha(folder/'stderr.log'))
+    write(folder/'PROCESS_RESULT.json',row);children[name]=row
+    owner_events.append(dict(event='PLANT_CLEANUP_UNCONFIRMED',monotonic=time.monotonic(),exit_code=code))
+    continue
    if p is not plant and p.poll() is None:
     if name in ['supervisor','reference','truth']:
      try:p.wait(timeout=2.)
@@ -190,22 +197,27 @@ def episode(root,stage,case,binding,env,scene):
  outcome.update(sensor_stability_pass=(json.loads((out/'sensor_probe/RESULT.json').read_text())['status']=='PASS') if stage=='S' and (out/'sensor_probe/RESULT.json').exists() else None,stage=stage,case=case,source_binding=binding,physical_feedback=bool(accepted),fault_injected_monotonic=injected,terminal=terminal,healthy_window=healthy,
   full_available_run=full_run,physical_start_state_stamp=first_state_stamp if accepted else None,full_physical_window=metrics,truth_bad=truth_bad,motion=motion,children=children,node_results=node_results,physics_steps_at_qualification=physics_steps_at_qualification,events_sha256=sha(events_path) if events_path.exists() else None,network_updates=0)
  write(out/'OWNER_STOP_TIMELINE.json',owner_events);write(out/'RESULT.json',outcome);return outcome
-def main():
+def main(config_root=None,binding_name='SOURCE_BINDING_v2.json'):
+ global O,BIRTH,CENTER
+ if config_root is not None:O=Path(config_root).resolve()
  p=argparse.ArgumentParser();p.add_argument('--stage',choices=['S','C','D'],required=True);p.add_argument('--output',required=True);p.add_argument('--allow-physics');p.add_argument('--prior');p.add_argument('--check-only',action='store_true');a=p.parse_args()
  if a.allow_physics!='RESEARCHER_MANUAL_'+a.stage+'_ONLY':raise PermissionError('MANUAL_STAGE_AUTHORITY_REQUIRED')
+ BIRTH=json.loads((O/'BIRTH_SELECTION.json').read_text());CENTER=BIRTH['selected']['position']
  if a.stage=='E' and json.loads((O/'FOREST_SENSOR_ROUTE_QUALIFICATION.json').read_text())['status']!='PASS':raise PermissionError('E_INITIAL_OBSERVED_ROUTE_NOT_QUALIFIED')
- binding=json.loads((O/'SOURCE_BINDING_v2.json').read_text())
+ binding=json.loads((O/binding_name).read_text())
  for path,h in binding.items():
   if sha(path)!=h:raise ValueError('SOURCE_ASSET_DRIFT '+path)
- if a.stage=='S':legacy_window(O/'LEGACY_B_PHYSICAL_WINDOW.json')
+ pending=bool(config_root is not None and a.check_only and a.stage in ['C','D'] and not a.prior)
+ if pending:pass
+ elif a.stage=='S':legacy_window(O/'LEGACY_B_PHYSICAL_WINDOW.json')
  elif a.stage=='C':
   if not a.prior:raise PermissionError('SENSOR_STABILITY_PREREQUISITE')
   predecessor(a.prior,'S',binding)
  elif not a.prior:raise PermissionError('PREVIOUS_STAGE_REQUIRED')
  else:predecessor(a.prior,'C_CAMPAIGN' if a.stage=='D' else 'D',binding)
  if a.check_only:
-  json.loads((O/'SCENES.json').read_text());print('PREFLIGHT_PASS_NO_ROS_NO_ARM');return
- out=claim(a.output);write(out/'RUN_IDENTITY.json',dict(argv=sys.argv,cwd=str(R),stage=a.stage,source_binding=binding,prior=a.prior,prior_sha256=sha(a.prior) if a.prior else None));scene=json.loads((O/'SCENES.json').read_text())['forest' if a.stage=='E' else 'open']
+  json.loads((O/'SCENES.json').read_text());print('PREFLIGHT_SOURCE_PASS_PREREQUISITE_PENDING_NO_ROS_NO_ARM' if pending else 'PREFLIGHT_PASS_NO_ROS_NO_ARM');return
+ out=claim(a.output);write(out/'RUN_IDENTITY.json',dict(argv=sys.argv,cwd=str(R),stage=a.stage,source_binding_file=str(O/binding_name),source_binding_sha256=sha(O/binding_name),source_binding=binding,prior=a.prior,prior_sha256=sha(a.prior) if a.prior else None));scene=json.loads((O/'SCENES.json').read_text())['forest' if a.stage=='E' else 'open']
  env=dict(os.environ,ROS_MASTER_URI='http://127.0.0.1:11375',ROS_IP='127.0.0.1',ROS_HOME=str(out/'ros_home'),ROS_LOG_DIR=str(out/'ros_logs'),ROS_DISTRO='noetic',ROS_VERSION='1',ROS_PYTHON_VERSION='3',
   CMAKE_PREFIX_PATH='/home/lizheng/YOPO/Controller/devel:/opt/ros/noetic',ROS_PACKAGE_PATH='/home/lizheng/YOPO/Controller/src:/opt/ros/noetic/share',
   PYTHONPATH=str(R)+':/opt/ros/noetic/lib/python3/dist-packages:/home/lizheng/YOPO/Controller/devel/lib/python3/dist-packages',
