@@ -14,11 +14,18 @@ class BirthGrant:
  expires:float
  identity:str
  @classmethod
- def load(cls,run,selected,now,mono):
+ def load(cls,run,selected,*,clock=time.time,monotonic_clock=time.monotonic):
   run=Path(run);raw=(run/'BIRTH_CERTIFICATE.json').read_bytes()
   truth=json.loads((run/'truth_data/HEARTBEAT.json').read_text())
   args=json.loads((run/'plant/PROCESS_START.json').read_text())['argv']
-  return cls.from_records(raw,truth,args,selected,now,mono)
+  # All input reads finish BEFORE age sampling. ROS first, monotonic second:
+  # this conservatively anchors ROS expiry, never adding read/parse latency.
+  now=clock();mono=monotonic_clock()
+  grant=cls.from_records(raw,truth,args,selected,now,mono)
+  finished=clock()
+  if not np.isfinite(finished) or not now<=finished<=grant.expires:
+   raise ValueError('BIRTH_CLOCK_OR_EXPIRY_CHANGED')
+  return grant
  @classmethod
  def from_records(cls,raw,truth,args,selected,now,mono):
   d=json.loads(raw)

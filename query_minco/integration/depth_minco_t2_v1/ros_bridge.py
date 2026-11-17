@@ -10,7 +10,7 @@ class SupervisorBridge:
   self.run=Path(run);self.clock=clock
   selected_path=Path(__file__).resolve().parents[3]/'research_outputs/t2_depth_minco_20261116_v1/BIRTH_SELECTION.json'
   self.selected=json.loads(selected_path.read_text())
-  self.engine=Engine(lambda now:BirthGrant.load(self.run,self.selected,now,time.monotonic()),clock)
+  self.engine=Engine(lambda now:BirthGrant.load(self.run,self.selected,clock=clock),clock)
   self.engine.start()
  def state(self,last,stamp,imu_stamp):
   if 'odom' not in last or 'imu' not in last:raise ValueError('MISSING_PVA')

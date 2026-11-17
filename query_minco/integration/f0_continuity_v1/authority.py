@@ -32,7 +32,7 @@ class BirthAuthority:
   selected_path=Path(run)/'BIRTH_SELECTION.json'
   if not selected_path.exists():selected_path=Path(__file__).resolve().parents[3]/'research_outputs/t2_depth_minco_20261116_v1/BIRTH_SELECTION.json'
   selected=json.loads(selected_path.read_text())
-  return cls(lambda now:BirthGrant.load(run,selected,now,time.monotonic()),clock)
+  return cls(lambda now:BirthGrant.load(run,selected,clock=clock),clock)
  def observe(self,depth,pose,stamp):
   new=Frame(depth,pose,stamp,stamp,self.clock(),'native_static_scene','native_camera')
   if self.frame is not None and new.stamp<=self.frame.stamp:
