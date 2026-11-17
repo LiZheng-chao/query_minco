@@ -236,29 +236,50 @@ def main(config_root=None,binding_name='SOURCE_BINDING_v2.json'):
   CMAKE_PREFIX_PATH='/home/lizheng/YOPO/Controller/devel:/opt/ros/noetic',ROS_PACKAGE_PATH='/home/lizheng/YOPO/Controller/src:/opt/ros/noetic/share',
   PYTHONPATH=str(R)+':/opt/ros/noetic/lib/python3/dist-packages:/home/lizheng/YOPO/Controller/devel/lib/python3/dist-packages',
   LD_LIBRARY_PATH='/home/lizheng/YOPO/Controller/devel/lib:/usr/local/cuda-11.8/lib64:/opt/ros/noetic/lib:/home/lizheng/YOPO/Simulator/devel/lib',PATH='/opt/ros/noetic/bin:'+os.environ['PATH'],PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='0',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1')
- # Match roscore reuse semantics without accepting a live listener or killing another run.
- with socket.socket() as sock:sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);sock.bind(('127.0.0.1',11375))
- master_dir=out/'master';master_dir.mkdir();so=(master_dir/'stdout.log').open('xb');se=(master_dir/'stderr.log').open('xb')
- argv=['/opt/ros/noetic/bin/roscore','-p','11375'];write(master_dir/'PROCESS_START.json',dict(argv=argv,cwd=str(R),started_unix=time.time()))
- master=subprocess.Popen(argv,env=env,stdout=so,stderr=se,start_new_session=True,preexec_fn=parent_death_preexec());results=[]
- try:
-  rpc=xmlrpc.client.ServerProxy(env['ROS_MASTER_URI'])
-  for _ in range(100):
+ results=[];master_codes=[]
+ for case in CASES if a.stage=='C' else ['none']:
+  # A killed ROS node can leave a registration pointing at a subsequently reused
+  # XMLRPC port. A fresh existing roscore per episode prevents cross-case shutdown.
+  case_env=dict(env,ROS_HOME=str(out/('master_'+case)/'ros_home'),ROS_LOG_DIR=str(out/('master_'+case)/'ros_logs'))
+  with socket.socket() as sock:sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);sock.bind(('127.0.0.1',11375))
+  master_dir=out/('master_'+case);master_dir.mkdir();so=(master_dir/'stdout.log').open('xb');se=(master_dir/'stderr.log').open('xb')
+  argv=['/opt/ros/noetic/bin/roscore','-p','11375'];write(master_dir/'PROCESS_START.json',dict(argv=argv,cwd=str(R),started_unix=time.time()))
+  master=subprocess.Popen(argv,env=case_env,stdout=so,stderr=se,start_new_session=True,preexec_fn=parent_death_preexec())
+  root_identity=next((row for row in family(master.pid) if row['pid']==master.pid),None)
+  try:
+   rpc=xmlrpc.client.ServerProxy(case_env['ROS_MASTER_URI'])
+   for _ in range(100):
+    try:
+     response=rpc.getPid('/p2_manual')
+     if master.poll() is None and response[0]==1 and response[2] in [row['pid'] for row in family(master.pid)]:break
+    except Exception:pass
+    time.sleep(.1)
+   else:raise RuntimeError('MASTER_TIMEOUT')
+   rpc.setParam('/p2_manual','/use_sim_time',False)
+   result=episode(out/case,a.stage,case,binding,case_env,scene)
+   results.append(dict(case=case,status=result['status'],result_path=str(out/case/'RESULT.json'),result_sha256=sha(out/case/'RESULT.json')))
+  finally:
    try:
-    response=rpc.getPid('/p2_manual')
-    if master.poll() is None and response[0]==1 and response[2] in [row['pid'] for row in family(master.pid)]:break
-   except Exception:pass
-   time.sleep(.1)
-  else:raise RuntimeError('MASTER_TIMEOUT')
-  rpc.setParam('/p2_manual','/use_sim_time',False)
-  for case in CASES if a.stage=='C' else ['none']:
-   result=episode(out/case,a.stage,case,binding,env,scene);results.append(dict(case=case,status=result['status'],result_path=str(out/case/'RESULT.json'),result_sha256=sha(out/case/'RESULT.json')))
-   if result['status']!='PASS':break
- finally:
-  if master.poll() is None:os.killpg(master.pid,signal.SIGINT)
-  try:code=master.wait(timeout=5)
-  except subprocess.TimeoutExpired:os.killpg(master.pid,signal.SIGKILL);code=master.wait()
-  so.close();se.close();write(master_dir/'PROCESS_RESULT.json',dict(pid=master.pid,actual_exit_code=code,stdout_sha256=sha(master_dir/'stdout.log'),stderr_sha256=sha(master_dir/'stderr.log')))
+    members=family(master.pid)
+    if master.poll() is None:
+     if root_identity is None or not alive(root_identity) or os.getpgid(master.pid)!=master.pid:raise RuntimeError('MASTER_OWNERSHIP_CHANGED')
+     os.killpg(master.pid,signal.SIGINT)
+    try:code=master.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+     if root_identity is None or not alive(root_identity) or os.getpgid(master.pid)!=master.pid:raise RuntimeError('MASTER_OWNERSHIP_CHANGED')
+     os.killpg(master.pid,signal.SIGKILL);code=master.wait(timeout=2)
+    deadline=time.monotonic()+1.
+    while any(alive(row) for row in members) and time.monotonic()<deadline:time.sleep(.01)
+    residual=[row for row in members if alive(row)]
+    # Only verified owned identities may be cleaned; never accept forced cleanup.
+    for row in residual:
+     if alive(row):os.kill(row['pid'],signal.SIGKILL)
+    if residual:code=-1
+    write(master_dir/'PROCESS_RESULT.json',dict(pid=master.pid,actual_exit_code=code,residual_owned=residual,stdout_sha256=sha(master_dir/'stdout.log'),stderr_sha256=sha(master_dir/'stderr.log')))
+   finally:so.close();se.close()
+   master_codes.append(code)
+  if result['status']!='PASS' or code!=0:break
+ code=0 if master_codes and all(x==0 for x in master_codes) else -1
  if a.stage=='C':
   status='PASS' if len(results)==len(CASES) and all(r['status']=='PASS' for r in results) and code==0 else 'FAIL'
   final=dict(stage='C_CAMPAIGN',status=status,source_binding=binding,episodes=results)
