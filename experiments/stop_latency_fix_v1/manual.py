@@ -173,6 +173,11 @@ def episode(root,stage,case,binding,env,scene):
   if (values['max_source_gap_s'] or 0)>.2 or (values['max_receipt_gap_s'] or 0)>.2 or values['max_age_s']>.2 or (values['end_receipt_age_s'] or 0)>.2 or (values['end_source_age_s'] or 0)>.2:qualification=False
  enough_feedback=all(healthy['intervals'].get(k,{}).get('n',0)>=5 for k in ['odom','imu','depth','request','raw','plant']) and metrics['max_integration_steps']>=500
  expected=bool(enough_feedback and stage=='C' and injected is not None and reason and expected_fault(case,reason) and stop_time-injected<=.35 and accepted)
+ if stage=='C' and case=='depth_loss':
+  fault_record=json.loads((out/'FAULT.json').read_text()) if (out/'FAULT.json').exists() else {}
+  causal=depth_loss_causality(events,fault_record,terminal or {},stop_time)
+  write(out/'DEPTH_CAUSALITY.json',dict(passed=causal,contract='exact_depth_stale_source_age_physical_stop_v1'))
+  expected=bool(expected and causal)
  if stage=='C' and not expected:qualification=False
  motion={}
  if stage in ['D','E','F0'] and accepted:
