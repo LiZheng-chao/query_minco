@@ -58,6 +58,7 @@ class Launcher(unittest.TestCase):
     self.assertFalse(any(x[0]=='signal_group' for x in timeline))
    else:exec(compile(ast.Module(body=nodes,type_ignores=[]),'actual_launcher','exec'),ns)
    self.assertTrue(all(all(f.closed for f in p.logs) for p in procs))
+   ns['master_records']=[json.loads(p.read_text()) for p in Path(td).glob('master_*/PROCESS_RESULT.json')]
    return ns,procs,timeline
  def test_seven_sequential_masters(self):
   n,p,t=self.exercise();self.assertEqual(len(p),7);self.assertEqual(n['master_codes'],[0]*7)
@@ -67,5 +68,5 @@ class Launcher(unittest.TestCase):
  def test_failed_episode_no_next_start(self):
   n,p,t=self.exercise(episode_fail=True);self.assertEqual(len(p),1)
  def test_owned_residual_blocks_next_episode(self):
-  n,p,t=self.exercise(residual=True);self.assertEqual(len(p),1);self.assertEqual(n['code'],-1)
+  n,p,t=self.exercise(residual=True);self.assertEqual(len(p),1);self.assertEqual(n['code'],-1);self.assertEqual(n['master_records'][0]['actual_exit_code'],0);self.assertFalse(n['master_records'][0]['master_cleanup_pass'])
  def test_identity_change_never_signals(self):self.exercise(identity_fail=True)

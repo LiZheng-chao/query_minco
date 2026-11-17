@@ -274,8 +274,9 @@ def main(config_root=None,binding_name='SOURCE_BINDING_v2.json'):
     # Only verified owned identities may be cleaned; never accept forced cleanup.
     for row in residual:
      if alive(row):os.kill(row['pid'],signal.SIGKILL)
+    actual_code=code
     if residual:code=-1
-    write(master_dir/'PROCESS_RESULT.json',dict(pid=master.pid,actual_exit_code=code,residual_owned=residual,stdout_sha256=sha(master_dir/'stdout.log'),stderr_sha256=sha(master_dir/'stderr.log')))
+    write(master_dir/'PROCESS_RESULT.json',dict(pid=master.pid,actual_exit_code=actual_code,master_cleanup_pass=code==0,residual_owned=residual,stdout_sha256=sha(master_dir/'stdout.log'),stderr_sha256=sha(master_dir/'stderr.log')))
    finally:so.close();se.close()
    master_codes.append(code)
   if result['status']!='PASS' or code!=0:break
