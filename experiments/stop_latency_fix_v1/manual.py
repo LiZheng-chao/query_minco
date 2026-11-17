@@ -5,7 +5,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from query_minco.integration.yopo_execution_v4.lifecycle import Lifecycle,atomic_json
 from query_minco.integration.yopo_execution_v4.metrics import summarize
 from query_minco.integration.yopo_execution_v4.owned import family,alive,kill_family,stop_plant,plant_exit_event
-from query_minco.integration.birth_execution_v1.evidence import CASES,expected_fault,predecessor,legacy_window
+from query_minco.integration.birth_execution_v1.evidence import CASES,expected_fault,depth_loss_causality,predecessor,legacy_window
 from query_minco.integration.yopo_control_supervisor_v1.lease import parent_death_preexec
 from query_minco.integration.owned_stop_v2.stop import OwnedProcessStop
 from query_minco.evaluation.mirror_holdout_v1 import sha,write
@@ -27,6 +27,7 @@ def episode(root,stage,case,binding,env,scene):
   owned.append((name,folder,child,so,se,time.monotonic()));return child
  nonce=uuid.uuid4().hex;children={};physics_steps_at_qualification=0
  xmlrpc.client.ServerProxy(env['ROS_MASTER_URI']).setParam('/fixed_owner','/truth_export_path',str(out/'native_grid'))
+ write(out/'BIRTH_SELECTION.json',BIRTH)
  write(out/'RUNTIME_PARAMETERS.json',dict(truth_export_path=str(out/'native_grid'),watchdog_s=.2))
  try:
   controller=launch('controller',['/opt/ros/noetic/bin/roslaunch',str(R/'ros/g4cp7b_fix2_v1/controller.launch'),'prefix:=/p2'])

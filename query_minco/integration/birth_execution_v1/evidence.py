@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from query_minco.evaluation.mirror_holdout_v1 import sha
 from query_minco.integration.yopo_execution_v4.evidence import CASES as OLD_CASES,expected_fault as old_expected,predecessor as old_predecessor,legacy_window
+from query_minco.integration.yopo_execution_v4.evidence import depth_loss_causality
 CASES=OLD_CASES+['truth_failure']
 def expected_fault(case,reason):
  return str(reason) in ['TRUTH_COLLISION_UNKNOWN_OR_STALE',"REQUEST ValueError('BIRTH_TRUTH_INVALID')"] if case=='truth_failure' else old_expected(case,reason)
