@@ -87,7 +87,7 @@ def episode(root,stage,case,binding,env,scene):
      if not arm_sent or h['plant']['state_source']!='DYNAMICS_INTEGRATED' or h['plant']['integration_steps']<=0:raise ValueError('NONPHYSICAL_FEEDBACK')
      if armed_at is None:armed_at=now;anchor=h['state']['p']
      if stage=='C' and injected is None and now-armed_at>=1.:
-      injected=now;write(out/'FAULT.json',dict(case=case,monotonic=now,ros_time=time.time(),armed=True,steps=h['plant']['integration_steps']))
+      injected=time.monotonic();write(out/'FAULT.json',dict(case=case,monotonic=injected,ros_time=time.time(),armed=True,steps=h['plant']['integration_steps']))
       if case=='reference_exit':write(out/'FAULT_PROCESS_TARGETS.json',dict(case=case,targets=kill_family(reference.pid),monotonic=time.monotonic()))
       if case=='controller_exit':write(out/'FAULT_PROCESS_TARGETS.json',dict(case=case,targets=kill_family(controller.pid),monotonic=time.monotonic()))
      status=out/'reference_data/STATUS.json'
