@@ -16,7 +16,7 @@ def main():
  from query_minco.integration.forest_fix2_v1.pairing import Pairing
  from query_minco.integration.yopo_execution_v4.sensor_space import ObservedSpace
  from query_minco.integration.yopo_shadow_v1.command_contract import position_command
- run=Path(a.run);out=run/'supervisor_data';out.mkdir();rospy.init_node('p2_execution_supervisor')
+ run=Path(a.run);runtime=json.loads((run/'RUNTIME_PARAMETERS.json').read_text());run_nonce=runtime.get('run_nonce');command_counter=0;out=run/'supervisor_data';out.mkdir();rospy.init_node('p2_execution_supervisor')
  journal=Journal(out/'EVENTS.jsonl');r=Readiness(True,True,'equilibrium_hover');gate=Admission();last={};poses=collections.OrderedDict();camera=None;space=None;pairer=Pairing();faults=[];mode='RUNNING';stop_confirmed=None
  birth_authority=BirthAuthority.from_run(run,lambda:rospy.Time.now().to_sec())
  forest_bridge=None
@@ -78,6 +78,7 @@ def main():
    if m.header.frame_id!='camera_link' or m.encoding!='32FC1' or m.is_bigendian or (m.height,m.width)!=(90,160) or m.step<640:abort('DEPTH_FORMAT');return
    pairer.depth(s,(m,arrival,arrival_ros));drain('DEPTH_ARRIVAL')
  def request(m):
+  nonlocal command_counter
   with journal.callback() as active:
    if not active or mode=='TERMINATING':return
    try:
@@ -105,15 +106,17 @@ def main():
      log('birth_admission',s,proof)
     elif r.mode=='ARMED':raise ValueError('BIRTH_CERTIFICATE_MISSING')
     if accept('request',s,d):
-     msg=position_command(PositionCommand,pva,rospy.Time.from_sec(s),0.,envelope.get('sequence',1))
+     command_counter+=1
+     if command_counter>=2**32:raise ValueError('COMMAND_ID_EXHAUSTED')
+     msg=position_command(PositionCommand,pva,rospy.Time.from_sec(s),0.,command_counter)
      # Preserve baseline effective gains via zero overrides.
      msg.kx=[0.,0.,0.];msg.kv=[0.,0.,0.]
-     command.publish(msg);log('controller_command',s,dict(pva=pva.tolist(),plan_id=proof['plan_id'] if proof else (gate.plan.id if gate.plan else None),authorization=proof,request_sequence=envelope.get('sequence',1),planner=forest_bridge.engine.summary() if forest_bridge else None))
+     command.publish(msg);log('controller_command',s,dict(pva=pva.tolist(),plan_id=proof['plan_id'] if proof else (gate.plan.id if gate.plan else None),authorization=proof,command_key=dict(nonce=run_nonce,trajectory_id=msg.trajectory_id,input_ns=msg.header.stamp.to_nsec()),yaw=msg.yaw,yaw_dot=msg.yaw_dot,request_sequence=envelope.get('sequence',1),planner=forest_bridge.engine.summary() if forest_bridge else None))
    except Exception as e:abort('REQUEST '+repr(e))
  def raw(m):
   with journal.callback() as active:
    if not active or mode=='TERMINATING':return
-   s=m.header.stamp.to_sec();d=dict(frame=m.header.frame_id,force_world=[m.force.x,m.force.y,m.force.z],q=[m.orientation.x,m.orientation.y,m.orientation.z,m.orientation.w],kR=list(m.kR),kOm=list(m.kOm),motors_enabled=bool(m.aux.enable_motors))
+   s=m.header.stamp.to_sec();d=dict(stamp_ns=m.header.stamp.to_nsec(),audit_aux=[m.aux.current_yaw,m.aux.kf_correction,m.aux.angle_corrections[0],m.aux.angle_corrections[1],float(m.aux.enable_motors),float(m.aux.use_external_yaw),0.],frame=m.header.frame_id,force_world=[m.force.x,m.force.y,m.force.z],q=[m.orientation.x,m.orientation.y,m.orientation.z,m.orientation.w],kR=list(m.kR),kOm=list(m.kOm),motors_enabled=bool(m.aux.enable_motors))
    if accept('raw',s,d) and r.forward_allowed(rospy.Time.now().to_sec()):
     if forest_bridge and r.mode=='ARMED':
      def send_raw(_):final.publish(m);r.forwarded(s);log('final_so3',s,d)

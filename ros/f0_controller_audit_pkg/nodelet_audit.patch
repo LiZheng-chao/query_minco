@@ -1,0 +1,150 @@
+--- upstream.cpp
++++ generated.cpp
+@@ -1,0 +2 @@
++#include <f0_controller_audit_pkg/audit.hpp>
+@@ -16 +17 @@
+-class SO3ControlNodelet : public nodelet::Nodelet
++class F0AuditSO3ControlNodelet : public nodelet::Nodelet
+@@ -19 +20 @@
+-  SO3ControlNodelet()
++  F0AuditSO3ControlNodelet()
+@@ -46,0 +48,2 @@
++  f0audit::Audit audit_;
++  std::string audit_nonce_;
+@@ -74,2 +77,3 @@
+-SO3ControlNodelet::publishSO3Command(void)
+-{
++F0AuditSO3ControlNodelet::publishSO3Command(void)
++{
++  const double audit_compute_begin = f0audit::mono();
+@@ -105,4 +109,5 @@
+-}
+-
+-void
+-SO3ControlNodelet::position_cmd_callback(
++  audit_.output(*so3_command, audit_compute_begin);
++}
++
++void
++F0AuditSO3ControlNodelet::position_cmd_callback(
+@@ -128,0 +134 @@
++  audit_.consume(*cmd, kx_, kv_);
+@@ -140 +146 @@
+-SO3ControlNodelet::odom_callback(const nav_msgs::Odometry::ConstPtr& odom)
++F0AuditSO3ControlNodelet::odom_callback(const nav_msgs::Odometry::ConstPtr& odom)
+@@ -180 +186 @@
+-SO3ControlNodelet::enable_motors_callback(const std_msgs::Bool::ConstPtr& msg)
++F0AuditSO3ControlNodelet::enable_motors_callback(const std_msgs::Bool::ConstPtr& msg)
+@@ -191 +197 @@
+-SO3ControlNodelet::corrections_callback(
++F0AuditSO3ControlNodelet::corrections_callback(
+@@ -200 +206 @@
+-SO3ControlNodelet::imu_callback(const sensor_msgs::Imu& imu)
++F0AuditSO3ControlNodelet::imu_callback(const sensor_msgs::Imu& imu)
+@@ -211 +217 @@
+-SO3ControlNodelet::onInit(void)
++F0AuditSO3ControlNodelet::onInit(void)
+@@ -222,0 +229 @@
++  n.param("audit_run_nonce", audit_nonce_, std::string(""));
+@@ -250 +257 @@
+-  odom_sub_ = n.subscribe("odom", 10, &SO3ControlNodelet::odom_callback, this,
++  odom_sub_ = n.subscribe("odom", 10, &F0AuditSO3ControlNodelet::odom_callback, this,
+@@ -253 +260 @@
+-    n.subscribe("position_cmd", 10, &SO3ControlNodelet::position_cmd_callback,
++    n.subscribe("position_cmd", 10, &F0AuditSO3ControlNodelet::position_cmd_callback,
+@@ -257 +264 @@
+-    n.subscribe("motors", 2, &SO3ControlNodelet::enable_motors_callback, this,
++    n.subscribe("motors", 2, &F0AuditSO3ControlNodelet::enable_motors_callback, this,
+@@ -260 +267 @@
+-    n.subscribe("corrections", 10, &SO3ControlNodelet::corrections_callback,
++    n.subscribe("corrections", 10, &F0AuditSO3ControlNodelet::corrections_callback,
+@@ -263 +270 @@
+-  imu_sub_ = n.subscribe("imu", 10, &SO3ControlNodelet::imu_callback, this,
++  imu_sub_ = n.subscribe("imu", 10, &F0AuditSO3ControlNodelet::imu_callback, this,
+@@ -271,75 +278,5 @@
+-void SO3ControlNodelet::initLogRecorder()
+-{
+-  std::cout << "logger_file_name: " << logger_file_name << std::endl;
+-  std::string temp_file_name = logger_file_name + "PID_logger_";
+-  time_t timep;
+-  timep = time(0);
+-  char tmp[64];
+-  strftime(tmp, sizeof(tmp), "%Y_%m_%d_%H_%M_%S", localtime(&timep));
+-  temp_file_name += tmp;
+-  temp_file_name += ".csv";
+-  if (logger.is_open())
+-  {
+-    logger.close();
+-  }
+-  logger.open(temp_file_name.c_str(), std::ios::out);
+-  std::cout << "PID logger: " << temp_file_name << std::endl;
+-  if (!logger.is_open())
+-  {
+-    std::cout << "cannot open the logger." << std::endl;
+-  }
+-  else
+-  {
+-    logger << "timestamp" << ',';
+-    logger << "cur_x" << ',';
+-    logger << "cur_y" << ',';
+-    logger << "cur_z" << ',';
+-    logger << "cur_vx" << ',';
+-    logger << "cur_vy" << ',';
+-    logger << "cur_vz" << ',';
+-    logger << "cur_ax" << ',';
+-    logger << "cur_ay" << ',';
+-    logger << "cur_az" << ',';
+-    logger << "not_use" << ',';
+-    logger << "not_use" << ',';
+-    logger << "cur_yaw" << ',';
+-    logger << "des_yaw" << ',';
+-    logger << "des_pos_x" << ',';
+-    logger << "des_pos_y" << ',';
+-    logger << "des_pos_z" << ',';
+-    logger << "des_vel_x" << ',';
+-    logger << "des_vel_y" << ',';
+-    logger << "des_vel_z" << ',';
+-    logger << "des_acc_x" << ',';
+-    logger << "des_acc_y" << ',';
+-    logger << "des_acc_z" << std::endl;
+-  }
+-}
+-void SO3ControlNodelet::recordLog(){
+-  if (logger.is_open())
+-  {
+-    logger << ros::Time::now().toNSec() << ',';
+-    logger << cur_pos_(0) << ',';
+-    logger << cur_pos_(1) << ',';
+-    logger << cur_pos_(2) << ',';
+-    logger << cur_vel_(0) << ',';
+-    logger << cur_vel_(1) << ',';
+-    logger << cur_vel_(2) << ',';
+-    logger << cur_acc_(0) << ',';
+-    logger << cur_acc_(1) << ',';
+-    logger << cur_acc_(2) << ',';
+-    logger << 0.0 << ',';
+-    logger << 0.0 << ',';
+-    logger << current_yaw_ << ',';
+-    logger << des_yaw_ << ',';
+-    logger << des_pos_(0) << ',';
+-    logger << des_pos_(1) << ',';
+-    logger << des_pos_(2) << ',';
+-    logger << des_vel_(0) << ',';
+-    logger << des_vel_(1) << ',';
+-    logger << des_vel_(2) << ',';
+-    logger << des_acc_(0) << ',';
+-    logger << des_acc_(1) << ',';
+-    logger << des_acc_(2) << std::endl;
+-  }
+-}
++void F0AuditSO3ControlNodelet::initLogRecorder()
++{
++  audit_.start(logger_file_name, audit_nonce_);
++}
++void F0AuditSO3ControlNodelet::recordLog() {}
+@@ -348 +285 @@
+-//PLUGINLIB_DECLARE_CLASS(so3_control, SO3ControlNodelet, SO3ControlNodelet,
++//PLUGINLIB_DECLARE_CLASS(so3_control, F0AuditSO3ControlNodelet, F0AuditSO3ControlNodelet,
+@@ -350 +287 @@
+-PLUGINLIB_EXPORT_CLASS(SO3ControlNodelet, nodelet::Nodelet);
++PLUGINLIB_EXPORT_CLASS(F0AuditSO3ControlNodelet, nodelet::Nodelet);

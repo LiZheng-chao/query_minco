@@ -1,0 +1,1 @@
+<library path="lib/libf0_audit_nodelet"><class name="f0_controller_audit_pkg/AuditSO3ControlNodelet" type="F0AuditSO3ControlNodelet" base_class_type="nodelet::Nodelet"><description>Identity-bound diagnostic Controller; upstream control computation unchanged.</description></class></library>

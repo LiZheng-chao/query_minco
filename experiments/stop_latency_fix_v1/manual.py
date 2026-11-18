@@ -10,7 +10,7 @@ from query_minco.integration.yopo_control_supervisor_v1.lease import parent_deat
 from query_minco.integration.owned_stop_v2.stop import OwnedProcessStop
 from query_minco.evaluation.mirror_holdout_v1 import sha,write
 R=Path.cwd();O=R/'research_outputs/stop_latency_fix_20261116_v1';PY='/home/lizheng/anaconda3/envs/yopo/bin/python'
-BIRTH=None;CENTER=None
+BIRTH=None;CENTER=None;AUDIT_BUILD=None
 def claim(path):
  p=Path(path).resolve()
  if (R/'research_outputs').resolve() not in p.parents:raise ValueError('OUTPUT_ROOT')
@@ -28,9 +28,12 @@ def episode(root,stage,case,binding,env,scene):
  nonce=uuid.uuid4().hex;children={};physics_steps_at_qualification=0
  xmlrpc.client.ServerProxy(env['ROS_MASTER_URI']).setParam('/fixed_owner','/truth_export_path',str(out/'native_grid'))
  write(out/'BIRTH_SELECTION.json',BIRTH)
- write(out/'RUNTIME_PARAMETERS.json',dict(truth_export_path=str(out/'native_grid'),watchdog_s=.2))
+ write(out/'RUNTIME_PARAMETERS.json',dict(truth_export_path=str(out/'native_grid'),watchdog_s=.2,run_nonce=nonce))
  try:
-  controller=launch('controller',['/opt/ros/noetic/bin/roslaunch',str(R/'ros/g4cp7b_fix2_v1/controller.launch'),'prefix:=/p2'])
+  controller_launch=R/'ros/g4cp7b_fix2_v1/controller.launch' if AUDIT_BUILD is None else R/'ros/f0_controller_audit_pkg/launch/controller.launch'
+  controller_args=[] if AUDIT_BUILD is None else ['audit_log:='+str(out/'controller/CONSUMPTION.jsonl'),'run_nonce:='+nonce]
+  controller=launch('controller',['/opt/ros/noetic/bin/roslaunch',str(controller_launch),'prefix:=/p2']+controller_args)
+  controller_identity=None;identity_checked=0.
   sensor=launch('sensor',[scene['sensor_binary'],'__name:=p2_sensor','/sim/odom:=/p2/native/odom','/depth_image:=/p2/native/depth','/camera_info:=/p2/native/camera_info'])
   relay=launch('relay',[PY,'-B','ros/g4cp7b_fix2_v1/relay.py','--run',str(out)])
   supervisor=launch('supervisor',[PY,'-B','ros/g4cp7b_fix2_v1/supervisor.py','--run',str(out)]+(['--forest'] if stage=='E' else []))
@@ -53,6 +56,14 @@ def episode(root,stage,case,binding,env,scene):
     if now-h['monotonic']>.25:reason='SUPERVISOR_HEARTBEAT_TIMEOUT';break
     if h['mode']=='ABORT':
      owner_events.append(dict(event='OWNER_RECEIVED_ABORT',monotonic=time.monotonic(),reason=h['reason'],heartbeat_monotonic=h['monotonic']));reason=h['reason'];break
+    if AUDIT_BUILD is not None and now-identity_checked>=.25:
+     from experiments.f0_controller_consumption_v1.manual import verify_controller
+     try:
+      controller_identity=verify_controller(env['ROS_MASTER_URI'],nonce);identity_checked=now
+      if not (out/'CONTROLLER_IDENTITY.json').exists():write(out/'CONTROLLER_IDENTITY.json',controller_identity)
+     except (ValueError,xmlrpc.client.Error,OSError):
+      if controller_identity is not None:raise ValueError('CONTROLLER_RUNTIME_IDENTITY_LOST')
+      time.sleep(.01);continue
     if stage!='S' and h['mode']=='PREPARE' and h['plant']['phase']=='HELD' and not prepare_sent:
      launch('prepare_permit',['/opt/ros/noetic/bin/rostopic','pub','-1','/p2/prepare_permit','std_msgs/String',json.dumps(dict(data=nonce))]);prepare_sent=True
     if stage!='S' and h['mode']=='ACK' and not arm_sent:
@@ -180,6 +191,17 @@ def episode(root,stage,case,binding,env,scene):
   expected=bool(expected and causal)
  if stage=='C' and not expected:qualification=False
  motion={}
+ execution_evidence=None
+ if stage=='F0':
+  from query_minco.integration.f0_continuity_v1.execution_evidence import assess
+  reference_events=out/'reference_data/EVENTS.jsonl'
+  reference_plans=[json.loads(x) for x in reference_events.read_text().splitlines()] if reference_events.exists() else []
+  audit_path=out/'controller/CONSUMPTION.jsonl'
+  controller_rows=[json.loads(x) for x in audit_path.read_text().splitlines()] if audit_path.exists() else []
+  identity_path=out/'CONTROLLER_IDENTITY.json'
+  loaded_identity=json.loads(identity_path.read_text()) if identity_path.exists() else None
+  execution_evidence=assess(events,start,stop_time,reference_plans,controller_rows=controller_rows,expected_nonce=nonce,controller_identity=loaded_identity) if AUDIT_BUILD is not None else assess(events,start,stop_time,reference_plans)
+  if execution_evidence['status']!='PASS':qualification=False
  if stage in ['D','E','F0'] and accepted:
   positions=[e['payload'] for e in events if e.get('kind')=='odom' and e.get('accepted') and start<=e['monotonic']<=stop_time]
   status=out/'reference_data/STATUS.json';ref=json.loads(status.read_text()) if status.exists() else {}
@@ -205,10 +227,11 @@ def episode(root,stage,case,binding,env,scene):
  if stop_errors:outcome.update(status='FAIL',cleanup_status='FAIL',stop_errors=stop_errors)
  if orphaned:outcome.update(status='FAIL',cleanup_status='FAIL',orphaned_owned_processes=orphaned)
  outcome.update(sensor_stability_pass=(json.loads((out/'sensor_probe/RESULT.json').read_text())['status']=='PASS') if stage=='S' and (out/'sensor_probe/RESULT.json').exists() else None,stage=stage,case=case,source_binding=binding,physical_feedback=bool(accepted),fault_injected_monotonic=injected,terminal=terminal,healthy_window=healthy,
-  full_available_run=full_run,physical_start_state_stamp=first_state_stamp if accepted else None,full_physical_window=metrics,truth_bad=truth_bad,motion=motion,children=children,node_results=node_results,physics_steps_at_qualification=physics_steps_at_qualification,events_sha256=sha(events_path) if events_path.exists() else None,network_updates=0)
+  full_available_run=full_run,physical_start_state_stamp=first_state_stamp if accepted else None,full_physical_window=metrics,truth_bad=truth_bad,motion=motion,children=children,node_results=node_results,physics_steps_at_qualification=physics_steps_at_qualification,events_sha256=sha(events_path) if events_path.exists() else None,execution_evidence=execution_evidence,network_updates=0)
  write(out/'OWNER_STOP_TIMELINE.json',owner_events);write(out/'RESULT.json',outcome);return outcome
-def main(config_root=None,binding_name='SOURCE_BINDING_v2.json'):
- global O,BIRTH,CENTER
+def main(config_root=None,binding_name='SOURCE_BINDING_v2.json',audit_build=None):
+ global O,BIRTH,CENTER,AUDIT_BUILD
+ AUDIT_BUILD=Path(audit_build).resolve() if audit_build is not None else None
  if config_root is not None:O=Path(config_root).resolve()
  p=argparse.ArgumentParser();p.add_argument('--stage',choices=['S','C','D','E','F0'],required=True);p.add_argument('--output',required=True);p.add_argument('--allow-physics');p.add_argument('--prior');p.add_argument('--check-only',action='store_true');a=p.parse_args()
  if a.allow_physics!='RESEARCHER_MANUAL_'+a.stage+'_ONLY':raise PermissionError('MANUAL_STAGE_AUTHORITY_REQUIRED')
@@ -236,6 +259,10 @@ def main(config_root=None,binding_name='SOURCE_BINDING_v2.json'):
   CMAKE_PREFIX_PATH='/home/lizheng/YOPO/Controller/devel:/opt/ros/noetic',ROS_PACKAGE_PATH='/home/lizheng/YOPO/Controller/src:/opt/ros/noetic/share',
   PYTHONPATH=str(R)+':/opt/ros/noetic/lib/python3/dist-packages:/home/lizheng/YOPO/Controller/devel/lib/python3/dist-packages',
   LD_LIBRARY_PATH='/home/lizheng/YOPO/Controller/devel/lib:/usr/local/cuda-11.8/lib64:/opt/ros/noetic/lib:/home/lizheng/YOPO/Simulator/devel/lib',PATH='/opt/ros/noetic/bin:'+os.environ['PATH'],PYTHONDONTWRITEBYTECODE='1',CUDA_VISIBLE_DEVICES='0',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1')
+ if AUDIT_BUILD is not None:
+  env['CMAKE_PREFIX_PATH']=str(AUDIT_BUILD/'devel_v2')+':'+env['CMAKE_PREFIX_PATH']
+  env['ROS_PACKAGE_PATH']=str(R/'ros')+':'+env['ROS_PACKAGE_PATH']
+  env['LD_LIBRARY_PATH']=str(AUDIT_BUILD/'devel_v2/lib')+':'+env['LD_LIBRARY_PATH']
  results=[];master_codes=[]
  for case in CASES if a.stage=='C' else ['none']:
   # A killed ROS node can leave a registration pointing at a subsequently reused
