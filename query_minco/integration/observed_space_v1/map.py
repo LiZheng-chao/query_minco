@@ -7,7 +7,7 @@ from scipy.ndimage import minimum_filter
 from scipy.spatial import cKDTree
 from query_minco.integration.yopo_shadow_v1.sensor_contract import rotation,OPTICAL_TO_BODY
 KNOWN_FREE=1;OCCUPIED=2;UNKNOWN=0
-COMPONENT_ID="bounded_full_cell_depth_carving_epoch_ledger_v1"
+COMPONENT_ID="bounded_per_hit_full_cell_depth_carving_epoch_ledger_v2"
 @dataclass(frozen=True)
 class Config:
  resolution:float=.1
@@ -44,18 +44,22 @@ class Frame:
   hit=np.isfinite(d)&(d>=.04)&(d<20);vv,uu=np.nonzero(hit);dd=d[vv,uu].astype(float)
   rays=np.stack([(uu-80)/80*dd,(vv-45)/80*dd,dd],1)
   world_hits=rays@OPTICAL_TO_BODY.T@self.R.T+self.p
+  self.hit_points=world_hits;self.hit_depths=dd;self.hit_ray_norm=np.linalg.norm(rays/np.maximum(dd[:,None],1e-12),axis=1);self.occupied_groups={}
   self.hit_bounds=(world_hits.min(0),world_hits.max(0)) if len(dd) else None
   self.hit_tree=cKDTree(world_hits) if len(dd) else None
   self.max_hit_depth=float(dd.max()) if len(dd) else 0.
   self.id=_sha((self.content_id+repr(stamp)).encode());self.record=dict(id=self.id,depth_sha256=depth_hash,pose=p.tolist(),quaternion=q.tolist(),stamp=stamp,pose_stamp=pose_stamp,scene_id=scene_id,camera_id=camera_id,
    calibration='native160x90_K80_80_80_45_optical_Z_origin0_Roptical_to_body_frozen_v1')
  def carve(self,centers,origin,cfg,deadline,reuse=None):
-  key=tuple(origin)
+  contract=repr(asdict(cfg))
+  # Contract travels WITH cache entries when the v2 facade reuses a view.
+  if self.cache and next(iter(self.cache))[1]!=contract:self.cache={}
+  key=(tuple(origin),contract)
   if key in self.cache:return self.cache[key]
   h=cfg.resolution;shape=cfg.shape;B=OPTICAL_TO_BODY
   free_full=np.zeros(len(centers),bool);visible_full=np.zeros(len(centers),bool);compute=np.ones(len(centers),bool)
   if self.cache:
-   old_origin,old=next(iter(self.cache.items()))
+   old_key,old=next(iter(self.cache.items()));old_origin=old_key[0]
    if reuse is not None and tuple(old_origin)==reuse['old_origin']:
     overlap=reuse['overlap'];ij_old=reuse['old_indices']
    else:
@@ -83,15 +87,34 @@ class Frame:
    free[idx]=conservative[vi[idx],ui[idx]]>z[idx]+r[idx]+cfg.depth_error
   occ_full=np.zeros(len(centers),bool)
   if self.cache:occ_full[overlap]=old[1][tuple(ij_old[overlap].T)]
-  uncertainty=cfg.depth_error+cfg.position_error+self.max_hit_depth*(math.sin(cfg.angle_error)+(cfg.pixel_guard+.5)/80)
-  envelope=(math.ceil(uncertainty/h)+1.5)*h
-  if self.hit_tree is not None:
-   possible=((centers[selected]>=self.hit_bounds[0]-envelope)&(centers[selected]<=self.hit_bounds[1]+envelope)).all(1)
-   selected_hits=selected[possible]
-   for first in range(0,len(selected_hits),4096):
+  # Bound each measured hit in Euclidean space, then enclose by L-infinity.
+  # Optical-Z depth error follows the full (off-axis) ray. Pixel errors are
+  # bounded on BOTH image axes. Rotation uses the exact chord bound.
+  group_key=(h,cfg.depth_error,cfg.position_error,cfg.angle_error,cfg.pixel_guard)
+  if group_key not in self.occupied_groups:
+   pixel_norm=math.sqrt(2)*(cfg.pixel_guard+.5)/80.
+   error=(cfg.position_error+cfg.depth_error*self.hit_ray_norm
+          +(self.hit_depths+cfg.depth_error)*pixel_norm
+          +2*math.sin(cfg.angle_error/2)*self.hit_depths*self.hit_ray_norm)
+   radii=(np.ceil(error/h)+1.5)*h
+   groups=[]
+   for radius_value in np.unique(radii):
+    points=self.hit_points[radii==radius_value]
+    groups.append((float(radius_value),points.min(0),points.max(0),cKDTree(points)))
+   self.occupied_groups={group_key:groups}
+  # Every radius group is queried; a farther, larger uncertain hit can cover a
+  # voxel even when the globally nearest hit has a smaller radius.
+  for envelope,lower_bound,upper_bound,tree in self.occupied_groups[group_key]:
+   possible=((centers[selected]>=lower_bound-envelope)&(centers[selected]<=upper_bound+envelope)).all(1)
+   candidates=selected[possible & ~occ_full[selected]]
+   if not len(candidates):continue
+   midpoint=(centers[candidates].min(0)+centers[candidates].max(0))/2
+   half_extent=np.max(np.abs(centers[candidates]-midpoint))
+   if tree.query(midpoint,p=np.inf)[0]>envelope+half_extent:continue
+   for first in range(0,len(candidates),4096):
     if time.perf_counter()>deadline:raise BudgetExceeded('HIT_QUERY_DEADLINE')
-    idx=selected_hits[first:first+4096];distance,_=self.hit_tree.query(centers[idx],p=np.inf)
-    occ_full[idx]=distance<=envelope
+    idx=candidates[first:first+4096];distance,_=tree.query(centers[idx],p=np.inf,distance_upper_bound=np.nextafter(envelope,np.inf))
+    occ_full[idx]|=distance<=envelope
   visible=valid.copy() # Only fully projectable measured cells can revoke prior free proofs.
   free_full[selected]=free;visible_full[selected]=visible
   result=(free_full.reshape(shape),occ_full.reshape(shape),visible_full.reshape(shape))
@@ -242,7 +265,11 @@ class ObservedMap:
    states=np.where(occ,OCCUPIED,np.where(free,KNOWN_FREE,UNKNOWN)).astype(np.uint8)
    if time.perf_counter()>deadline:raise BudgetExceeded('FUSION_DEADLINE')
   except BudgetExceeded:
-   self.invalidate('COMPUTE_BUDGET_EXCEEDED');raise
+   # A failed computation revokes permission, never destroys accepted evidence.
+   # Completed per-frame carve caches remain exact and can be retried.
+   self.epoch+=1;self.latest_snapshot=None;self._last_free=None
+   self.records.append(dict(reason='COMPUTE_BUDGET_EXCEEDED_EVIDENCE_RETAINED',epoch=self.epoch))
+   raise
   self._last_free=free.copy()
   snap=Snapshot(states,origin,self.cfg,[f.record for f in usable],now,self.epoch,lambda:self.epoch);self.latest_snapshot=snap
   return snap

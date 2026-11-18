@@ -8,8 +8,11 @@ class Tests(unittest.TestCase):
  def callback(self,name,ns):
   main=next(x for x in ast.parse(Path('ros/g4cp7b_fix2_v1/supervisor.py').read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='main')
   fn=next(x for x in main.body if isinstance(x,ast.FunctionDef) and x.name==name)
-  exec(compile(ast.Module(body=[fn],type_ignores=[]),'production_callback','exec'),ns)
-  return ns[name]
+  wrapper=ast.parse('def _factory():\n command_counter=0\n').body[0]
+  wrapper.body.extend([fn,ast.Return(value=ast.Name(id=name,ctx=ast.Load()))])
+  tree=ast.fix_missing_locations(ast.Module(body=[wrapper],type_ignores=[]))
+  exec(compile(tree,'production_callback','exec'),ns)
+  return ns['_factory']()
  def test_goal_request_without_pva_is_not_direct_control(self):
   b=SupervisorBridge.__new__(SupervisorBridge);b.engine=Engine(lambda now:None,clock=lambda:100.)
   r=types.SimpleNamespace(mode='ARMED',samples={'odom':(100.,),'imu':(100.,)})
@@ -28,8 +31,8 @@ class Tests(unittest.TestCase):
   r=types.SimpleNamespace(mode='ARMED',forward_allowed=lambda x:True,forwarded=lambda x:None)
   sent=[];errors=[]
   vector=types.SimpleNamespace(x=0.,y=0.,z=9.6)
-  m=types.SimpleNamespace(header=types.SimpleNamespace(stamp=types.SimpleNamespace(to_sec=lambda:100.),frame_id='world'),
-      force=vector,orientation=types.SimpleNamespace(x=0,y=0,z=0,w=1),kR=[],kOm=[],aux=types.SimpleNamespace(enable_motors=True))
+  m=types.SimpleNamespace(header=types.SimpleNamespace(stamp=types.SimpleNamespace(to_sec=lambda:100.,to_nsec=lambda:100000000000),frame_id='world'),
+      force=vector,orientation=types.SimpleNamespace(x=0,y=0,z=0,w=1),kR=[],kOm=[],aux=types.SimpleNamespace(enable_motors=True,current_yaw=0.,kf_correction=0.,angle_corrections=[0.,0.],use_external_yaw=False))
   ns=dict(journal=types.SimpleNamespace(callback=lambda:nullcontext(True)),mode='RUNNING',
        r=r,accept=lambda *x:True,forest_bridge=types.SimpleNamespace(engine=e),
        rospy=types.SimpleNamespace(Time=types.SimpleNamespace(now=lambda:types.SimpleNamespace(to_sec=lambda:100.))),

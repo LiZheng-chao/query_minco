@@ -15,7 +15,7 @@ class Engine:
   self.lock=threading.RLock();self.wake=threading.Event();self.closed=threading.Event()
   self.thread=None;self.frame=None;self.state=None;self.goal=None;self.goal_stamp=0.
   self.history=deque(maxlen=32);self.revalidated_sensor=None;self.last_computed_plan=None;self.pending=deque();self.evidence_overflow=False;self.revision=0;self.key=None;self.last_stamp=0.;self.committed=None;self.last_executed_plan=None;self.last_plan_time=-float('inf');self.next_plan_time=-float('inf')
-  self.events=deque(maxlen=2048);self.audit_overflow=False;self.event_sequence=0;self.counts=Counter();self.serial=0;self.published_ids=deque(maxlen=512);self.published_plan_count=0
+  self.revoked_by_observation=0;self.events=deque(maxlen=2048);self.audit_overflow=False;self.event_sequence=0;self.counts=Counter();self.serial=0;self.published_ids=deque(maxlen=512);self.published_plan_count=0
  def record(self,event,**fields):
   if len(self.events)==self.events.maxlen:self.audit_overflow=True
   self.event_sequence+=1
@@ -42,8 +42,10 @@ class Engine:
    # Epoch describes geometry/pose, not arrival count. Exact repeated measured
    # content may refresh evidence but NEVER extends an already issued proof.
    if key!=self.key or stamp-self.last_stamp>.2:
+    if self.committed is not None:self.revoked_by_observation+=1
     self.revision+=1;self.committed=None
    self.key=key;self.last_stamp=stamp
+   pose=dict(pose,_received_ros=now)
    self.frame=(d.copy(),pose,stamp,self.revision)
    if len(self.pending)>=8:
     self.evidence_overflow=True;self.committed=None;raise ValueError('EVIDENCE_QUEUE_OVERFLOW')
@@ -63,14 +65,14 @@ class Engine:
  def current_revision(self):
   return self.revision
  def run_once(self):
-  begin=time.perf_counter();now=self.clock();map_s=None;planning=None;cert_s=None
+  begin=time.perf_counter();now=self.clock();map_s=None;planning=None;cert_s=None;use_cache=False
   with self.lock:
    frame=self.frame;state=copy.deepcopy(self.state);goal=None if self.goal is None else self.goal.copy()
    goal_stamp=self.goal_stamp;old=self.committed
    if old is None and self.last_computed_plan is not None:old=dict(plan=self.last_computed_plan)
    pending=list(self.pending);history=list(self.history)
   if frame is None or state is None or goal is None:return False
-  if old is None and now<self.next_plan_time:return False
+  if old is None and now<self.next_plan_time and not pending:return False
   depth,pose,stamp,rev=frame
   try:
    if not 0<=now-stamp<=.2 or not 0<=now-state[1]<=.2 or not 0<=now-goal_stamp<=.2:raise ValueError('SOURCE_STALE')
@@ -95,6 +97,10 @@ class Engine:
     while self.pending and self.pending[0][2]<=stamp:self.pending.popleft()
    map_s=time.perf_counter()-start
    if map_s>.15:raise ValueError('MAP_DEADLINE')
+   # Fusion is serviced at evidence cadence even while proposals are limited.
+   if old is None and now<self.next_plan_time:
+    with self.lock:self.record('EVIDENCE_FUSED_NO_PROPOSAL',source_stamp=stamp,map_s=map_s,pending=len(self.pending))
+    return False
    space=Space(snap,self.clock);planning=time.perf_counter()
    replan=old is None or now>=self.next_plan_time
    if replan:
@@ -143,12 +149,16 @@ class Engine:
     self.committed=dict(plan=plan,proof=proof,map_epoch=rev,source_stamp=stamp,
                         snapshot=snap.id,acceptance_id=acceptance,birth_id=snap.birth_id,certificate_id=digest(dict(plan=plan.id,snapshot=snap.id,expiry=proof['valid_until'])))
     if replan:self.last_plan_time=now
-    self.record('CERTIFIED_COMMITTED',plan_id=plan.id,map_epoch=rev,source_stamp=stamp,
+    self.record('CERTIFIED_COMMITTED',plan_id=plan.id,plan=plan.record,map_epoch=rev,source_stamp=stamp,
                 acceptance_id=acceptance,snapshot_id=snap.id,birth_id=snap.birth_id,replan=replan,map_s=map_s,planning_s=planning_s,
                 total_s=time.perf_counter()-begin,certification_s=cert_s,admission_s=admission_s,commit_s=time.perf_counter()-commit_start,plan_stages=getattr(plan,'_planning_profile',{}),maxima=plan.maxima)
    return True
   except Exception as error:
    with self.lock:
+    # A revoked candidate is not a permanent ROI to revalidate forever.
+    # Rebuild from retained complete evidence after a failed cache proof.
+    if use_cache:
+     self.last_computed_plan=None;self.revalidated_sensor=None
     self.committed=None;self.record('REJECTED',reason=str(error),source_stamp=stamp,
                                    map_epoch=rev,total_s=time.perf_counter()-begin,map_s=map_s,planning_s=time.perf_counter()-planning if planning is not None else None,certification_s=cert_s)
    return False
@@ -166,7 +176,8 @@ class Engine:
    pva=plan.at(now)
    if np.linalg.norm(pva[0]-self.state[0]['p'])>.15:
     self.committed=None;self.record('REVOKED',reason='TRACKING_PROOF_ENVELOPE');return None
-   return dict(kind='trajectory',stamp=now,pva=pva.tolist(),plan_id=plan.id,
+   proof=dict(type='OBSERVED_SPACE_FULL_TUBE_V1',plan_id=plan.id,source_stamp=c['source_stamp'],map_epoch=c['map_epoch'],snapshot_id=c['snapshot'],certificate_id=c['certificate_id'],acceptance_id=c['acceptance_id'],certificate_expiry=c['proof']['valid_until'],geometry='OBSERVED_SPACE_FULL_TUBE_129',evidence=c['proof'])
+   return dict(kind='trajectory',authorization=proof,plan=c['plan'].record,stamp=now,pva=pva.tolist(),plan_id=plan.id,
                source_stamp=c['source_stamp'],map_epoch=c['map_epoch'],
                acceptance_id=c['acceptance_id'],snapshot_id=c['snapshot'],certificate_id=c['certificate_id'],certificate_expiry=c['proof']['valid_until'],depth_source_stamp=c['source_stamp'],matched_odom_stamp=c['source_stamp'])
  def take_events(self):

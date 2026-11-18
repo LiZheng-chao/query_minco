@@ -26,7 +26,9 @@ def latest_proof(base,plan,frames,birth_loader,clock):
   retired=[f['id'] for f in records];records=[]
  deadline=time.perf_counter()+.05
  for depth,pose,stamp,rev in frames:
-  frame=Frame(depth,pose,stamp,stamp,clock(),'native_static_scene','native_camera')
+  # Source freshness was checked at the original receipt, not at a later
+  # fusion attempt. Snapshot history TTL/current expiry still gate permission.
+  frame=Frame(depth,pose,stamp,stamp,pose.get('_received_ros',clock()),'native_static_scene','native_camera')
   free,occ,visible=frame.carve(centers,origin,cfg,deadline)
   # New visible evidence can withdraw older free cells; old occupied evidence
   # remains occupied under the existing static-scene contract.

@@ -36,8 +36,8 @@ def episode(root,stage,case,binding,env,scene):
   controller_identity=None;identity_checked=0.
   sensor=launch('sensor',[scene['sensor_binary'],'__name:=p2_sensor','/sim/odom:=/p2/native/odom','/depth_image:=/p2/native/depth','/camera_info:=/p2/native/camera_info'])
   relay=launch('relay',[PY,'-B','ros/g4cp7b_fix2_v1/relay.py','--run',str(out)])
-  supervisor=launch('supervisor',[PY,'-B','ros/g4cp7b_fix2_v1/supervisor.py','--run',str(out)]+(['--forest'] if stage=='E' else []))
-  reference=launch('reference',[PY,'-B','ros/g4cp7b_fix2_v1/reference.py','--run',str(out),'--stage','D' if stage=='F0' else ('C' if stage=='S' else stage)])
+  supervisor=launch('supervisor',[PY,'-B','ros/g4cp7b_fix2_v1/supervisor.py','--run',str(out)]+(['--forest'] if stage in ['E','F1'] else []))
+  reference=launch('reference',[PY,'-B','ros/g4cp7b_fix2_v1/reference.py','--run',str(out),'--stage','D' if stage=='F0' else ('E' if stage=='F1' else ('C' if stage=='S' else stage))])
   truth=launch('truth',[PY,'-B','ros/g4cp7b_fix_v1/truth.py','--run',str(out)]+(['--map-folder',scene['map_folder']] if stage=='E' else []))
   args=[scene['plant_binary'],'__name:=p2_native_plant','_run_nonce:='+nonce,'_motor_initial_state:=equilibrium_hover','_rate/odom:=100.0']
   args+=['_simulator/init_state_'+axis+':='+str(v) for axis,v in zip('xyz',scene['spawn'])]
@@ -49,7 +49,7 @@ def episode(root,stage,case,binding,env,scene):
      for ident in family(row[2].pid):owned_identities[(ident['pid'],ident['start_ticks'])]=ident
     tracker_stop.wait(.25)
   plant=launch('plant',args);guard=OwnedProcessStop(plant);tracker=threading.Thread(target=collect_identities,daemon=True);tracker.start();begin=time.monotonic();prepare_sent=False;arm_sent=False
-  while time.monotonic()-begin<(70 if stage=='E' else 35):
+  while time.monotonic()-begin<(70 if stage in ['E','F1'] else 35):
    now=time.monotonic();hb=out/'supervisor_data/HEARTBEAT.json'
    if hb.exists():
     h=json.loads(hb.read_text());last_hb=h
@@ -78,7 +78,7 @@ def episode(root,stage,case,binding,env,scene):
      if bt['clearance_lower_bound_m']<.60 or any(abs(x-y)>.005 for x,y in zip(bt['position'],CENTER)):raise ValueError('BIRTH_SPHERE_NOT_CONFIRMED')
      issued_at=time.time()
      if not (out/'BIRTH_CERTIFICATE.json').exists():write(out/'BIRTH_CERTIFICATE.json',dict(scope='ENGINEERING_BIRTH_BALL_ONLY',center_world=CENTER,radius_m=.60,issued=issued_at,expires=issued_at+30,map_id=bt['map_id'],run_nonce=nonce,authority='researcher explicitly authorized finite birth ball;not P4 certification'))
-     if stage=='E':
+     if stage in ['E','F1']:
       ready=h.get('planner') or {}
       if not ready.get('ready') or ready.get('valid_until',0)<time.time():
        time.sleep(.01);continue
@@ -91,7 +91,7 @@ def episode(root,stage,case,binding,env,scene):
       if case=='reference_exit':write(out/'FAULT_PROCESS_TARGETS.json',dict(case=case,targets=kill_family(reference.pid),monotonic=time.monotonic()))
       if case=='controller_exit':write(out/'FAULT_PROCESS_TARGETS.json',dict(case=case,targets=kill_family(controller.pid),monotonic=time.monotonic()))
      status=out/'reference_data/STATUS.json'
-     if stage in ['D','E','F0'] and status.exists() and json.loads(status.read_text())['done']:
+     if stage in ['D','E','F0','F1'] and status.exists() and json.loads(status.read_text())['done']:
       qualification=True;life.move('QUALIFIED',now);physics_steps_at_qualification=h['plant']['integration_steps'];break
    probe_result=out/'sensor_probe/RESULT.json'
    if stage=='S' and probe_result.exists():
@@ -192,17 +192,18 @@ def episode(root,stage,case,binding,env,scene):
  if stage=='C' and not expected:qualification=False
  motion={}
  execution_evidence=None
- if stage=='F0':
+ if stage in ['F0','F1']:
   from query_minco.integration.f0_continuity_v1.execution_evidence import assess
   reference_events=out/'reference_data/EVENTS.jsonl'
   reference_plans=[json.loads(x) for x in reference_events.read_text().splitlines()] if reference_events.exists() else []
+  if stage=='F1':reference_plans=[dict(kind='plan',plan=e['payload']['plan'],plan_id=e['payload']['plan_id']) for e in events if e.get('kind')=='t2_planner_audit' and e.get('payload',{}).get('event')=='CERTIFIED_COMMITTED']
   audit_path=out/'controller/CONSUMPTION.jsonl'
   controller_rows=[json.loads(x) for x in audit_path.read_text().splitlines()] if audit_path.exists() else []
   identity_path=out/'CONTROLLER_IDENTITY.json'
   loaded_identity=json.loads(identity_path.read_text()) if identity_path.exists() else None
   execution_evidence=assess(events,start,stop_time,reference_plans,controller_rows=controller_rows,expected_nonce=nonce,controller_identity=loaded_identity) if AUDIT_BUILD is not None else assess(events,start,stop_time,reference_plans)
   if execution_evidence['status']!='PASS':qualification=False
- if stage in ['D','E','F0'] and accepted:
+ if stage in ['D','E','F0','F1'] and accepted:
   positions=[e['payload'] for e in events if e.get('kind')=='odom' and e.get('accepted') and start<=e['monotonic']<=stop_time]
   status=out/'reference_data/STATUS.json';ref=json.loads(status.read_text()) if status.exists() else {}
   if positions and ref:
@@ -210,7 +211,7 @@ def episode(root,stage,case,binding,env,scene):
    last=positions[-1];progress=float(last['p'][0]-ref['anchor'][0]);error=float(np.linalg.norm(np.array(last['p'])-ref['target']));speed=float(np.linalg.norm(last['v']))
    motion=dict(progress_m=progress,terminal_position_error_m=error,terminal_speed=speed,replans=ref['replans'])
    if stage in ['D','F0'] and not(ref['replans']>=2 and progress>=.25 and error<=.10 and speed<=.10 and metrics['maxima']['tracking_error']<=.15):qualification=False
-   if stage=='E' and not(progress>=2 and ref['replans']>=20 and metrics['maxima']['tracking_error']<=.15):qualification=False
+   if stage in ['E','F1'] and not(progress>=2 and ref['replans']>=20 and metrics['maxima']['tracking_error']<=.15):qualification=False
   else:qualification=False
  life.qualified=life.qualified and qualification
  expected_children=['plant']+(['reference'] if case=='reference_exit' else [])+(['controller'] if case=='controller_exit' else [])
@@ -233,7 +234,7 @@ def main(config_root=None,binding_name='SOURCE_BINDING_v2.json',audit_build=None
  global O,BIRTH,CENTER,AUDIT_BUILD
  AUDIT_BUILD=Path(audit_build).resolve() if audit_build is not None else None
  if config_root is not None:O=Path(config_root).resolve()
- p=argparse.ArgumentParser();p.add_argument('--stage',choices=['S','C','D','E','F0'],required=True);p.add_argument('--output',required=True);p.add_argument('--allow-physics');p.add_argument('--prior');p.add_argument('--check-only',action='store_true');a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--stage',choices=['S','C','D','E','F0','F1'],required=True);p.add_argument('--output',required=True);p.add_argument('--allow-physics');p.add_argument('--prior');p.add_argument('--check-only',action='store_true');a=p.parse_args()
  if a.allow_physics!='RESEARCHER_MANUAL_'+a.stage+'_ONLY':raise PermissionError('MANUAL_STAGE_AUTHORITY_REQUIRED')
  if a.stage=='E':
   qualification=R/'research_outputs/t2_depth_minco_20261116_v1/E_QUALIFICATION.json'
@@ -250,6 +251,10 @@ def main(config_root=None,binding_name='SOURCE_BINDING_v2.json',audit_build=None
   if not a.prior:raise PermissionError('SENSOR_STABILITY_PREREQUISITE')
   predecessor(a.prior,'S',binding)
  elif not a.prior:raise PermissionError('PREVIOUS_STAGE_REQUIRED')
+ elif a.stage=='F1':
+  from experiments.forest_f1_v1.manual import qualification
+  qualification(O,binding)
+  predecessor(a.prior,'C_CAMPAIGN',binding)
  else:predecessor(a.prior,'C_CAMPAIGN' if a.stage in ['D','F0'] else 'D',binding)
  if a.check_only:
   json.loads((O/'SCENES.json').read_text());print('PREFLIGHT_SOURCE_PASS_PREREQUISITE_PENDING_NO_ROS_NO_ARM' if pending else 'PREFLIGHT_PASS_NO_ROS_NO_ARM');return

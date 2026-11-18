@@ -95,7 +95,7 @@ def assess(events, begin, end, reference_plans=(), controller_rows=None, expecte
         plans={}
         for e in reference_plans:
             rec=e.get('plan')
-            if e.get('kind')=='plan' and isinstance(rec,dict):
+            if (e.get('kind')=='plan' or (e.get('kind')=='t2_planner_audit' and e.get('payload',{}).get('event')=='CERTIFIED_COMMITTED')) and isinstance(rec,dict):
                 identity=hashlib.sha256(json.dumps(rec,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
                 if identity!=e.get('plan_id'):return reject('REFERENCE_PLAN_HASH')
                 plans[identity]=rec
@@ -147,12 +147,18 @@ def assess(events, begin, end, reference_plans=(), controller_rows=None, expecte
             if e['output_ns'] in used:return reject('DUPLICATE_OUTPUT_TIMESTAMP')
             used.add(e['output_ns']);source=commands[e['trajectory_id']];d=source['payload'];pid=d.get('plan_id');proof=d.get('authorization') or {}
             if source not in rows or pid not in plans:continue  # startup/hold cannot count
-            if proof.get('plan_id')!=pid or proof.get('geometry')!='FINITE_BIRTH_FULL_TUBE_129_WITH_OCCUPIED_VETO':return reject('PLAN_AUTHORIZATION_MISMATCH')
+            if proof.get('geometry')=='OBSERVED_SPACE_FULL_TUBE_129':
+                error=validate_observed_authorization(d,plans[pid])
+                if error:return reject(error)
+            elif proof.get('plan_id')!=pid or proof.get('geometry')!='FINITE_BIRTH_FULL_TUBE_129_WITH_OCCUPIED_VETO':return reject('PLAN_AUTHORIZATION_MISMATCH')
             output_ros=e['output_ns']//1000000000+(e['output_ns']%1000000000)/1e9
             if proof.get('certificate_expiry',-math.inf)<max(e['received_ros'],output_ros):return reject('EXPIRED_AUTHORIZATION')
             final=finals.get(e['output_ns'])
             if final is None:continue
             fd=final['payload']
+            if proof.get('geometry')=='OBSERVED_SPACE_FULL_TUBE_129':
+                current=fd.get('observed_authority') or {}
+                if any(current.get(k)!=d.get(k) for k in ['plan_id','map_epoch','snapshot_id','certificate_id','acceptance_id']):return reject('OBSERVED_FORWARD_AUTHORITY_CONFLICT')
             if e['force']!=fd['force_world'] or e['orientation']!=fd['q'] or e['kr']!=fd['kR'] or e['kom']!=fd['kOm']:return reject('SO3_OUTPUT_CONTENT_MISMATCH')
             if e['aux']!=fd.get('audit_aux'):return reject('SO3_AUX_MISMATCH')
             if final['monotonic']<consumed[e['trajectory_id']]['monotonic']:return reject('FORWARD_BEFORE_CONSUMPTION')
@@ -176,3 +182,21 @@ def assess(events, begin, end, reference_plans=(), controller_rows=None, expecte
         return result
     except (KeyError,TypeError,ValueError,OverflowError) as error:
         return reject('MALFORMED_EVIDENCE '+str(error))
+
+
+def validate_observed_authorization(command,record):
+    from query_minco.integration.yopo_execution_v4.trajectory import digest,Plan
+    try:
+        proof=command['authorization'];evidence=proof['evidence'];pid=digest(record)
+        if proof['type']!='OBSERVED_SPACE_FULL_TUBE_V1' or proof['plan_id']!=pid or command['plan_id']!=pid:return 'OBSERVED_PLAN_ID'
+        if evidence.get('passed') is not True:return 'OBSERVED_GEOMETRY_NOT_PASSED'
+        if proof['map_epoch']!=command['map_epoch'] or proof['map_epoch']!=evidence['epoch']:return 'OBSERVED_MAP_EPOCH'
+        if proof['snapshot_id']!=command['snapshot_id'] or proof['snapshot_id']!=evidence['snapshot']:return 'OBSERVED_SNAPSHOT'
+        if proof['certificate_expiry']!=evidence['valid_until'] or not command['source_stamp']<=command['stamp']<=proof['certificate_expiry']:return 'OBSERVED_EXPIRY'
+        expected=digest(dict(plan=pid,snapshot=proof['snapshot_id'],expiry=proof['certificate_expiry']))
+        if proof['certificate_id']!=expected or command['certificate_id']!=expected:return 'OBSERVED_CERTIFICATE_ID'
+        if proof['acceptance_id']!=command['acceptance_id'] or proof['source_stamp']!=command['source_stamp']:return 'OBSERVED_ACCEPTANCE'
+        import numpy as np
+        if not np.allclose(Plan(record).at(command['stamp']),command['pva'],atol=2e-5,rtol=0):return 'OBSERVED_COMMAND_CONTENT'
+    except (KeyError,TypeError,ValueError):return 'MALFORMED_OBSERVED_CERTIFICATE'
+    return None

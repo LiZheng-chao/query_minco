@@ -92,8 +92,11 @@ def main():
       log('goal_request',s,dict(goal=envelope['goal']))
       return
      if accept('request',s,dict(frame='world',pva=pva.tolist())):
-      msg=position_command(PositionCommand,pva,rospy.Time.from_sec(s),0.,envelope.get('sequence',1))
+      command_counter+=1
+      if command_counter>=2**32:raise ValueError('COMMAND_ID_EXHAUSTED')
+      msg=position_command(PositionCommand,pva,rospy.Time.from_sec(s),0.,command_counter)
       msg.kx=[0.,0.,0.];msg.kv=[0.,0.,0.];command.publish(msg)
+      log('controller_command',s,dict(pva=pva.tolist(),plan_id=None,authorization=None,command_key=dict(nonce=run_nonce,trajectory_id=msg.trajectory_id,input_ns=msg.header.stamp.to_nsec()),yaw=msg.yaw,yaw_dot=msg.yaw_dot))
      return
     cert=None;proof=None
     if a.forest:
@@ -119,7 +122,7 @@ def main():
    s=m.header.stamp.to_sec();d=dict(stamp_ns=m.header.stamp.to_nsec(),audit_aux=[m.aux.current_yaw,m.aux.kf_correction,m.aux.angle_corrections[0],m.aux.angle_corrections[1],float(m.aux.enable_motors),float(m.aux.use_external_yaw),0.],frame=m.header.frame_id,force_world=[m.force.x,m.force.y,m.force.z],q=[m.orientation.x,m.orientation.y,m.orientation.z,m.orientation.w],kR=list(m.kR),kOm=list(m.kOm),motors_enabled=bool(m.aux.enable_motors))
    if accept('raw',s,d) and r.forward_allowed(rospy.Time.now().to_sec()):
     if forest_bridge and r.mode=='ARMED':
-     def send_raw(_):final.publish(m);r.forwarded(s);log('final_so3',s,d)
+     def send_raw(authority):final.publish(m);r.forwarded(s);log('final_so3',s,dict(d,observed_authority=authority))
      if forest_bridge.engine.with_current(rospy.Time.now().to_sec(),send_raw) is None:abort('T2_NO_CURRENT_PROOF')
     else:final.publish(m);r.forwarded(s);log('final_so3',s,d)
  def plant(m):
@@ -141,11 +144,14 @@ def main():
      try:
       forest_bridge.state(last,r.samples['odom'][0],r.samples['imu'][0])
       def send_position(envelope):
+       nonlocal command_counter
        pva=np.asarray(envelope['pva'])
        if not accept('request',envelope['stamp'],dict(frame='world',pva=pva.tolist())):raise ValueError('T2_REQUEST_REJECTED')
-       msg=position_command(PositionCommand,pva,rospy.Time.from_sec(envelope['stamp']),0.,1)
+       command_counter+=1
+       if command_counter>=2**32:raise ValueError('COMMAND_ID_EXHAUSTED')
+       msg=position_command(PositionCommand,pva,rospy.Time.from_sec(envelope['stamp']),0.,command_counter)
        msg.kx=[0.,0.,0.];msg.kv=[0.,0.,0.];command.publish(msg)
-       forest_bridge.engine.published(envelope);log('controller_command',envelope['stamp'],envelope)
+       forest_bridge.engine.published(envelope);log('controller_command',envelope['stamp'],dict(envelope,command_key=dict(nonce=run_nonce,trajectory_id=msg.trajectory_id,input_ns=msg.header.stamp.to_nsec()),yaw=msg.yaw,yaw_dot=msg.yaw_dot))
       if forest_bridge.engine.with_current(rospy.Time.now().to_sec(),send_position) is None:abort('T2_NO_CURRENT_PROOF')
      except Exception as e:abort('T2_ADMISSION '+repr(e))
     if forest_bridge:
