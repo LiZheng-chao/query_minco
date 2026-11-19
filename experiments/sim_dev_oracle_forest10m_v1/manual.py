@@ -8,16 +8,18 @@ import sys
 R=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(R))
 OUT=R/'research_outputs/sim_dev_oracle_forest10m_v1'
-B=OUT/'runtime_bundle_v4'
+BUNDLES={'p0':'runtime_bundle_v5_p0','p0-p1':'runtime_bundle_v5'}
 MODE='UNQUALIFIED_SIM_DEV_DEBUG'
 
 def main():
     parser=argparse.ArgumentParser()
+    parser.add_argument('--variant',choices=BUNDLES,default='p0-p1')
     parser.add_argument('--check-only',action='store_true')
     parser.add_argument('--mode',choices=[MODE],required=True)
     parser.add_argument('--allow-physics')
     parser.add_argument('--output',type=Path)
     args=parser.parse_args()
+    B=OUT/BUNDLES[args.variant]
     if Path.cwd().resolve()!=R:
         raise ValueError('EXPECTED_REPOSITORY_CWD')
     if not args.check_only and args.allow_physics!='RESEARCHER_MANUAL_FOREST10M_ONLY':
@@ -38,7 +40,7 @@ def main():
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     sys.argv=[str(owner),'--stage','SIM_DEV_ORACLE','--allow-physics',
-              'RESEARCHER_MANUAL_SIM_DEV_ORACLE_ONLY','--prior',str(OUT/'TARGETED_PROOF_GAP_TESTS.json'),
+              'RESEARCHER_MANUAL_SIM_DEV_ORACLE_ONLY','--prior',str(OUT/'TARGETED_P0_P1_TESTS.json'),
               '--output',str(args.output or B/'runs/CHECK_ONLY_NO_CREATE')]
     if args.check_only:
         sys.argv.append('--check-only')

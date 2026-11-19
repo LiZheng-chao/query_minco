@@ -64,7 +64,7 @@ class Tests(unittest.TestCase):
 
     def test_bound_goal_in_reference_and_engine(self):
         from query_minco.integration.depth_minco_t2_v1.ros_bridge import reference_main
-        cfg=json.loads((O/'runtime_bundle_v4/runtime_v2/SCENES.json').read_text())['forest']['forest10m']
+        cfg=json.loads((O/'runtime_bundle_v5/runtime_v2/SCENES.json').read_text())['forest']['forest10m']
         text=source(inspect.getsource(reference_main))
         compile(text,'<reference>','exec')
         self.assertIn("target=config(run)['goal']",text)
@@ -73,7 +73,7 @@ class Tests(unittest.TestCase):
             (run.parent/'SCENE_IDENTITY.json').write_text(json.dumps(dict(scene=dict(forest10m=cfg))))
             goal=config(run)['goal']
             self.assertEqual(goal,[10.5,.75,2.])
-        file=O/'runtime_bundle_v4/generated_v2/bridge.py'
+        file=O/'runtime_bundle_v5/generated_v2/bridge.py'
         spec=importlib.util.spec_from_file_location('forest10m_generated_bridge',file)
         m=importlib.util.module_from_spec(spec)
         import sys
@@ -124,7 +124,7 @@ class Tests(unittest.TestCase):
     def test_generated_supervisor_armed_request(self):
         from types import SimpleNamespace as NS
         import numpy as np
-        file=O/'runtime_bundle_v4/generated_v2/supervisor.py'
+        file=O/'runtime_bundle_v5/generated_v2/supervisor.py'
         module=ast.parse(file.read_text())
         main=next(n for n in module.body if isinstance(n,ast.FunctionDef) and n.name=='main')
         setup=[n for n in main.body if
@@ -172,7 +172,7 @@ class Tests(unittest.TestCase):
         from collections import deque
         from experiments.sim_dev_oracle_v1.guardian import Guardian
         from query_minco.integration.yopo_execution_v4.trajectory import build
-        g=O/'runtime_bundle_v4/generated_v2'
+        g=O/'runtime_bundle_v5/generated_v2'
         sys.path.insert(0,str(g))
         try:
             spec=importlib.util.spec_from_file_location('forest10m_renewal_bridge',g/'bridge.py')
@@ -200,7 +200,9 @@ class Tests(unittest.TestCase):
         class IPC:
             online=True
             def send(self,request):
-                if self.online:self.reply=dict(ok=True,proof=guardian.check(**request))
+                if self.online:
+                    try:self.reply=dict(ok=True,proof=guardian.check(**request))
+                    except ValueError as exc:self.reply=dict(ok=False,reason=str(exc))
             def poll(self,timeout):return self.online
             def recv(self):return self.reply
         e.conn=IPC()
@@ -229,6 +231,26 @@ class Tests(unittest.TestCase):
             e.last_executed=plan
         self.assertEqual(len(set(ids)),31)
         last=e.committed['proof']
+        t[0]+=0.02
+        bad=dict(state,v=[.12,0.,0.])
+        e.actual=(bad,t[0],t[0]);e.last_stamp=t[0];e.goal=(e.goal[0],t[0])
+        e.actual_pair=dict(state_pair_id='tracking',odom_stamp=t[0],imu_stamp=t[0])
+        e.stop=Step();e.guard_loop()
+        self.assertTrue(e.urgent_replan)
+        self.assertIs(e.committed['proof'],last)
+        self.assertEqual(sum(x['event']=='EARLY_REPLAN_REQUESTED' for x in e.events),1)
+        e.stop=Step();e.guard_loop()
+        self.assertEqual(sum(x['event']=='EARLY_REPLAN_REQUESTED' for x in e.events),1)
+        # A new plan can be considered even with the last committed pair.
+        # All original tracking and switch tests still run.
+        replacement=build(p,z,z,[0,0,0,1],p,t[0])
+        e.proposed=dict(plan=replacement,planner={})
+        e.actual=(state,*e.actual[1:])
+        e.actual_pair=e.committed['state_pair']
+        e.stop=Step();e.guard_loop()
+        self.assertEqual(e.committed['plan'].id,replacement.id)
+        self.assertIsNotNone(e.command(t[0]))
+        last=e.committed['proof']
         t[0]=last['expires']+.001
         e.last_stamp=t[0];e.goal=(e.goal[0],t[0]);e.actual=(state,t[0],t[0])
         e.actual_pair=dict(state_pair_id='lost',odom_stamp=t[0],imu_stamp=t[0])
@@ -237,11 +259,16 @@ class Tests(unittest.TestCase):
         self.assertIsNone(e.with_current(t[0],sent.append))
         self.assertEqual(sent,[])
         self.assertIs(e.committed['proof'],last)
+        self.assertIsNone(e.with_current(t[0],sent.append))
+        rejected=[x for x in e.events if x['event']=='COMMAND_REJECTED']
+        self.assertEqual(len(rejected),1)
+        self.assertEqual(rejected[0]['reason'],'PROOF_EXPIRED')
+        self.assertEqual(rejected[0]['now'],t[0])
 
     def test_search_preserves_recorded_routes(self):
         import sys
         import numpy as np
-        g=O/'runtime_bundle_v4/generated_v2'
+        g=O/'runtime_bundle_v5/generated_v2'
         sys.path.insert(0,str(g))
         try:from candidate_fast import search_goal,LatestHitSpace,ObservedSpace
         finally:sys.path.remove(str(g))
@@ -256,3 +283,40 @@ class Tests(unittest.TestCase):
                 space.deadline=float('inf')
                 return fn(space,np.asarray(row['pose']['p']),goal)
             np.testing.assert_array_equal(search(ObservedSpace.search_goal),search(search_goal))
+
+    def test_ray_target_and_blocked_segment(self):
+        import sys
+        import numpy as np
+        from .local_goal import choose_local_goal,ray_box_exit_distance
+        g=O/'runtime_bundle_v5/generated_v2'
+        sys.path.insert(0,str(g))
+        try:from candidate_fast import search_goal,CandidatePlanner
+        finally:sys.path.remove(str(g))
+        p=np.array([.25,-.25,2.]);goal=np.array([10.5,.75,2.])
+        pose=dict(frame='world',p=p.tolist(),v=[0.,0.,0.],a=[0.,0.,0.],q=[0.,0.,0.,1.])
+        depth=np.full((90,160),20.,dtype=np.float32)
+        plan,info=CandidatePlanner().propose(depth,pose,pose,goal,100.,allow_diagnostic=True,prefer_strict=False)
+        self.assertEqual(info['target_mode'],'ray')
+        np.testing.assert_allclose(plan.record['goal'],p+.4*(goal-p)/np.linalg.norm(goal-p))
+        self.assertAlmostEqual(ray_box_exit_distance([0,0,0],[0,-1,0],[-1,-2,-1],[1,1,1]),2.)
+        self.assertAlmostEqual(ray_box_exit_distance([0,0,0],[0,0,1],[-1,-2,-1],[1,1,.3]),.3)
+        for point,lo,hi in [([2,0,0],[-1]*3,[1]*3),([0,0,0],[0]*3,[0]*3),([float('nan'),0,0],[-1]*3,[1]*3)]:
+            with self.assertRaisesRegex(ValueError,'LOCAL_RAY_OUT_OF_BOUNDS'):
+                ray_box_exit_distance(point,[1,0,0],lo,hi)
+        # Veto only the middle of the straight segment. Both endpoints are free.
+        def ball_free(q,r):
+            self.assertAlmostEqual(r,.33)
+            return not (.37<q[0]<.50 and abs(q[1]-p[1])<.05)
+        space=SimpleNamespace(origin=np.array([-1.,-1.,1.]),cfg=SimpleNamespace(shape=(32,24,20)),ball_free=ball_free)
+        local,target,mode=choose_local_goal(space,p,goal,lambda s,p,g:search_goal(s,p,g,first_edge=True))
+        self.assertEqual(mode,'astar')
+        self.assertTrue(ball_free(target,.33))
+        self.assertGreater(abs(local[1]-p[1]),.05)
+        from experiments.sim_dev_oracle_v1.guardian import Guardian
+        from query_minco.integration.yopo_execution_v4.trajectory import build
+        detour=build(p,np.zeros(3),np.zeros(3),pose['q'],local,100.)
+        run=O/'runtime_bundle_v4/runs/FOREST10M_20261119_125240_7375/none'
+        proof=Guardian(str(run/'native_grid'),'nonphysical-ray-case').check(detour.record,pose,100.,100.,1)
+        self.assertEqual(proof['plan_id'],detour.id)
+        with self.assertRaisesRegex(ValueError,'NO_SENSOR_CERTIFIED_LOCAL_ROUTE'):
+            choose_local_goal(space,p,goal,lambda *_:p)

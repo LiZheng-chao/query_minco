@@ -8,7 +8,9 @@ D = Path(__file__).resolve().parent
 O = R/'research_outputs/sim_dev_oracle_forest10m_v1'
 OLD = R/'research_outputs/sim_dev_raw_latest_fix_20261118_v1/runtime_bundle'
 
-def generate(b, *, proof_gap=False, refresh=False):
+def generate(b, *, proof_gap=False, refresh=False, p0=False, p1=False):
+    if (p0 or p1) and not proof_gap:
+        raise ValueError("FOREST10M_PATCHES_REQUIRE_PROOF_GAP_BASE")
     g = b/'generated_v2'
     rt = b/'runtime_v2'
     g.mkdir(parents=True,exist_ok=refresh)
@@ -38,10 +40,20 @@ def generate(b, *, proof_gap=False, refresh=False):
         planner = patch(planner, "class CandidatePlanner:", "import heapq\n"+dedent(search)+"\nclass CandidatePlanner:")
         planner = patch(planner, "local=ObservedSpace.search_goal(space,np.array(state['p']),horizon);astar_s=time.perf_counter()-tick\n   delta=", "local=search_goal(space,np.array(state['p']),horizon);astar_s=time.perf_counter()-tick\n   delta=")
         planner = patch(planner, "local_goal=local.tolist(),fixed_lookahead=.4", "local_goal=local.tolist(),search_origin=list(state['p']),clipped_goal=horizon.tolist(),fixed_lookahead=.4")
+        if p1:
+            planner=patch(planner,"def search_goal(self,start,goal):","def search_goal(self,start,goal,*,first_edge=False):")
+            planner=patch(planner," return next((p for p in points[1:]", " if first_edge:return points[1] if len(points)>1 else points[0]\n return next((p for p in points[1:]")
+            planner=patch(planner,"import heapq\n","import heapq\nfrom experiments.sim_dev_oracle_forest10m_v1.local_goal import choose_local_goal\n")
+            planner=patch(planner,"horizon=np.clip(goal,space.origin+.33,space.origin+np.array(space.cfg.shape)*.1-.33);local=search_goal(space,np.array(state['p']),horizon)",
+                          "local,horizon,target_mode=choose_local_goal(space,np.array(state['p']),goal,lambda s,p,g:search_goal(s,p,g,first_edge=True))")
+            planner=patch(planner,"clipped_goal=horizon.tolist()", "ray_target=horizon.tolist(),target_mode=target_mode")
         (g/'candidate_fast.py').write_text(planner)
         bridge = patch(bridge, "from experiments.sim_dev_oracle_v1.planner import CandidatePlanner,validate_input", "from candidate_fast import CandidatePlanner,validate_input")
         bridge = patch(bridge, "   try:\n    if not self.guardian_ready:", "   proposal=None\n   try:\n    if not self.guardian_ready:")
         bridge = patch(bridge, "self.proposed is not None and self.proposed['plan'].id", "self.proposed is not None and self.proposed is proposal and self.proposed['plan'].id")
+    if p0:
+        from experiments.sim_dev_oracle_forest10m_v1.proof_continuity import adapt_bridge
+        bridge=adapt_bridge(bridge)
     (g/'bridge.py').write_text(bridge)
     sup = (OLD/'generated_v2/supervisor.py').read_text()
     sup = patch(sup, 'journal=Journal(', 'from experiments.sim_dev_oracle_forest10m_v1.audit import AsyncJournal\n journal=AsyncJournal(')
@@ -105,6 +117,8 @@ def generate(b, *, proof_gap=False, refresh=False):
  final['observed_execution']=observed(out,final)
  final.setdefault('mission',{})['ever_armed']=final['observed_execution']['ever_armed']
  write(out/'RESULT.json',final);print""")
+    if p0 or p1:
+        owner=patch(owner, "'TARGETED_PROOF_GAP_TESTS.json'", "'TARGETED_P0_P1_TESTS.json'")
     (g/'debug_owner.py').write_text(owner)
     for path in g.glob('*.py'):
         compile(path.read_text(), str(path), 'exec')
