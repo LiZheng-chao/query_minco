@@ -1,5 +1,5 @@
 """Bounded recovery for the isolated, non-integrating SIM startup."""
-from query_minco.integration.yopo_startup_v3.readiness import Readiness
+from query_minco.integration.yopo_execution_v4.readiness import Readiness
 
 SENSORS = ('odom', 'imu', 'depth')
 

@@ -8,7 +8,7 @@ import sys
 R=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(R))
 OUT=R/'research_outputs/sim_dev_oracle_forest10m_v1'
-B=OUT/'runtime_bundle_v2'
+B=OUT/'runtime_bundle_v4'
 MODE='UNQUALIFIED_SIM_DEV_DEBUG'
 
 def main():
@@ -38,7 +38,7 @@ def main():
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     sys.argv=[str(owner),'--stage','SIM_DEV_ORACLE','--allow-physics',
-              'RESEARCHER_MANUAL_SIM_DEV_ORACLE_ONLY','--prior',str(OUT/'TARGETED_TESTS.json'),
+              'RESEARCHER_MANUAL_SIM_DEV_ORACLE_ONLY','--prior',str(OUT/'TARGETED_PROOF_GAP_TESTS.json'),
               '--output',str(args.output or B/'runs/CHECK_ONLY_NO_CREATE')]
     if args.check_only:
         sys.argv.append('--check-only')

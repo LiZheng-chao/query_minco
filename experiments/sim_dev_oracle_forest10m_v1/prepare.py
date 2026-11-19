@@ -8,11 +8,11 @@ D = Path(__file__).resolve().parent
 O = R/'research_outputs/sim_dev_oracle_forest10m_v1'
 OLD = R/'research_outputs/sim_dev_raw_latest_fix_20261118_v1/runtime_bundle'
 
-def generate(b):
+def generate(b, *, proof_gap=False, refresh=False):
     g = b/'generated_v2'
     rt = b/'runtime_v2'
-    g.mkdir(parents=True)
-    rt.mkdir()
+    g.mkdir(parents=True,exist_ok=refresh)
+    rt.mkdir(exist_ok=refresh)
     cfg = json.loads((D/'config.json').read_text())
     scenes = json.loads((OLD/'runtime_v2/SCENES.json').read_text())
     scenes['forest'].update(goal=cfg['goal'], forest10m=cfg)
@@ -22,6 +22,26 @@ def generate(b):
     bridge = (R/'experiments/sim_dev_oracle_v1/bridge.py').read_text()
     bridge = patch(bridge, 'expected=[3.25,-.25,2.]', "expected=self.goal_config")
     bridge = patch(bridge, "  self.sensor_dir=self.run/", "  self.goal_config=json.loads((self.run.parent/'SCENE_IDENTITY.json').read_text())['scene']['forest10m']['goal']\n  self.sensor_dir=self.run/")
+    if proof_gap:
+        import inspect
+        from query_minco.integration.yopo_execution_v4.sensor_space import ObservedSpace
+        search = inspect.getsource(ObservedSpace.search_goal)
+        search = patch(search, "    new=cost[u]+h*np.hypot(dx,dy)\n", "")
+        search = patch(search, "    n=max(2,int(np.linalg.norm(q-p)/.05)+1)",
+                       "    new=cost[u]+h*np.hypot(dx,dy)\n    if new>=cost.get(w,float('inf')):continue\n    n=max(2,int(np.linalg.norm(q-p)/.05)+1)")
+        # Outdated heap entries cannot improve any edge after a better entry
+        # for the same node has already been expanded.
+        search = patch(search, "parent={};end=None", "parent={};end=None;expanded={}")
+        search = patch(search, "   _,u=heapq.heappop(frontier);p=", "   _,u=heapq.heappop(frontier)\n   if cost[u]>=expanded.get(u,float('inf')):continue\n   expanded[u]=cost[u]\n   p=")
+        planner = (R/'experiments/sim_dev_oracle_v1/planner.py').read_text()
+        from textwrap import dedent
+        planner = patch(planner, "class CandidatePlanner:", "import heapq\n"+dedent(search)+"\nclass CandidatePlanner:")
+        planner = patch(planner, "local=ObservedSpace.search_goal(space,np.array(state['p']),horizon);astar_s=time.perf_counter()-tick\n   delta=", "local=search_goal(space,np.array(state['p']),horizon);astar_s=time.perf_counter()-tick\n   delta=")
+        planner = patch(planner, "local_goal=local.tolist(),fixed_lookahead=.4", "local_goal=local.tolist(),search_origin=list(state['p']),clipped_goal=horizon.tolist(),fixed_lookahead=.4")
+        (g/'candidate_fast.py').write_text(planner)
+        bridge = patch(bridge, "from experiments.sim_dev_oracle_v1.planner import CandidatePlanner,validate_input", "from candidate_fast import CandidatePlanner,validate_input")
+        bridge = patch(bridge, "   try:\n    if not self.guardian_ready:", "   proposal=None\n   try:\n    if not self.guardian_ready:")
+        bridge = patch(bridge, "self.proposed is not None and self.proposed['plan'].id", "self.proposed is not None and self.proposed is proposal and self.proposed['plan'].id")
     (g/'bridge.py').write_text(bridge)
     sup = (OLD/'generated_v2/supervisor.py').read_text()
     sup = patch(sup, 'journal=Journal(', 'from experiments.sim_dev_oracle_forest10m_v1.audit import AsyncJournal\n journal=AsyncJournal(')
@@ -74,10 +94,16 @@ def generate(b):
      if now-armed_at>=scene['forest10m']['mission_s']:reason='MISSION_TIME_LIMIT';break""")
     owner=patch(owner,"   if stage=='SIM_DEV_ORACLE' and not(progress>=.75 and ref['replans']>=2 and metrics['maxima']['tracking_error']<=.15):qualification=False","   if stage=='SIM_DEV_ORACLE' and not(error<=.15 and speed<=.10 and ref['replans']>=2 and metrics['maxima']['tracking_error']<=.15):qualification=False")
     owner=patch(owner,'  from experiments.sim_dev_oracle_v1.manual import qualification\n  qualification(O,binding)\n','')
-    owner=patch(owner,"'TARGETED_TEST_RESULTS.json'","'TARGETED_TESTS.json'")
+    owner=patch(owner,"'TARGETED_TEST_RESULTS.json'","'TARGETED_NON_HOLD_TESTS.json'")
     owner=patch(owner," write(out/'RESULT.json',final);print", """ status_path=out/'none/reference_data/STATUS.json'
  if status_path.exists():final['mission']=json.loads(status_path.read_text())
  final['mission_outcome']='GOAL_REACHED' if final.get('mission',{}).get('done') else ('TIME_LIMIT' if any(f.get('reason') in ('MISSION_TIME_LIMIT','EPISODE_DEADLINE') for f in final.get('faults',[])) else 'STOPPED')
+ write(out/'RESULT.json',final);print""")
+    if proof_gap:
+        owner=patch(owner,"'TARGETED_NON_HOLD_TESTS.json'","'TARGETED_PROOF_GAP_TESTS.json'")
+        owner=patch(owner," write(out/'RESULT.json',final);print", """ from experiments.sim_dev_oracle_forest10m_v1.proof_evidence import observed
+ final['observed_execution']=observed(out,final)
+ final.setdefault('mission',{})['ever_armed']=final['observed_execution']['ever_armed']
  write(out/'RESULT.json',final);print""")
     (g/'debug_owner.py').write_text(owner)
     for path in g.glob('*.py'):
