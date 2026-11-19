@@ -29,5 +29,6 @@
   "startup_wait_limit_s": 20.0,
   "armed_freshness_s": 0.2,
   "proof_ttl_s": 0.1,
-  "physical_qualified": false
+  "physical_qualified": false,
+  "mission_s": 75.0
 }

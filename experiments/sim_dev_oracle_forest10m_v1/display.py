@@ -10,16 +10,32 @@ def main():
  from visualization_msgs.msg import Marker,MarkerArray
  from nav_msgs.msg import Path as RosPath
  from geometry_msgs.msg import PoseStamped
+ from sensor_msgs import point_cloud2
+ from sensor_msgs.msg import PointCloud2
+ from std_msgs.msg import Header
+ import numpy as np
+ from query_minco.integration.native_grid_truth_v1.grid import Grid
  from query_minco.integration.yopo_execution_v4.trajectory import Plan
  rospy.init_node('forest10m_readonly_display',anonymous=True)
  prefix='/forest10m/display/'
  pubs={k:rospy.Publisher(prefix+k,MarkerArray if k in ['candidate','approved'] else Marker,queue_size=1,latch=True) for k in ['candidate','approved','drone']}
  actual=rospy.Publisher(prefix+'actual',RosPath,queue_size=1,latch=True);goalpub=rospy.Publisher(prefix+'goal',PoseStamped,queue_size=1,latch=True)
- cfg=json.loads(Path(__file__).with_name('config.json').read_text());goal=PoseStamped();goal.header.frame_id='world';goal.pose.orientation.w=1;goal.pose.position.x,goal.pose.position.y,goal.pose.position.z=cfg['goal'];goalpub.publish(goal)
+ goal=PoseStamped();goal.header.frame_id='world';goal.pose.orientation.w=1
+ # Visualization only: native occupancy export of the fixed sparse scene.
+ root=Path(__file__).resolve().parents[2]
+ grid=Grid(root/'research_outputs/forest_dev_sparse_seed3_dist6_fixedbirth_v1/capture_ordered/native_grid_GT_NOT_USED')
+ ident=json.loads((a.run/'SCENE_IDENTITY.json').read_text())['scene']
+ if (ident['seed'],ident['maze_type'],ident['tree_dist'])!=(3,5,6):
+  raise ValueError('DISPLAY_SCENE_MISMATCH')
+ goal.pose.position.x,goal.pose.position.y,goal.pose.position.z=ident['goal'];goalpub.publish(goal)
+ step=2
+ points=grid.origin+(np.argwhere(grid.data[::step,::step,::step]>0)*step+.5)*grid.h
+ cloud=rospy.Publisher(prefix+'map',PointCloud2,queue_size=1,latch=True)
+ cloud.publish(point_cloud2.create_cloud_xyz32(Header(frame_id='world'),points.tolist()))
  file=a.run/'supervisor_data/EVENTS.jsonl'
  if not file.exists():file=a.run/'none/supervisor_data/EVENTS.jsonl'
  if not file.exists():raise ValueError('RUN_EVENTS_NOT_FOUND')
- path=RosPath();path.header.frame_id='world';plans={};pending={};last_time=None;deadline=None
+ path=RosPath();path.header.frame_id='world';plans={};last_time=None;deadline=None
  def marker(plan,color,ns):
   from geometry_msgs.msg import Point
   m=Marker();m.header.frame_id='world';m.ns=ns;m.id=0;m.type=Marker.LINE_STRIP;m.action=Marker.ADD;m.pose.orientation.w=1;m.scale.x=.03;m.color.r,m.color.g,m.color.b=color;m.color.a=1;m.text=plan.id
