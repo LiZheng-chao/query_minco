@@ -25,5 +25,11 @@ def assess(*args,**kwargs):
  new="if current.get('plan_id') not in plans or validate_observed_authorization(current,plans[current['plan_id']]) is not None:return reject('ORACLE_FORWARD_AUTHORITY_INVALID')\n                if current.get('snapshot_id')!=d.get('snapshot_id') or current.get('authorization',{}).get('oracle',{}).get('nonce')!=expected_nonce:return reject('ORACLE_FORWARD_SCENE_OR_NONCE')"
  if code.count(old)!=1:raise ValueError('UPSTREAM_FORWARD_EVIDENCE_DRIFT')
  code=code.replace(old,new)
+ # Raw C++ outputs may continue during owned shutdown without being forwarded.
+ # Consumption must be timely regardless; output expiry applies to executed forwards.
+ old="if proof.get('certificate_expiry',-math.inf)<max(e['received_ros'],output_ros):return reject('EXPIRED_AUTHORIZATION')\n            final=finals.get(e['output_ns'])\n            if final is None:continue"
+ new="if proof.get('certificate_expiry',-math.inf)<e['received_ros']:return reject('EXPIRED_AUTHORIZATION')\n            final=finals.get(e['output_ns'])\n            if final is None:continue\n            if proof.get('certificate_expiry',-math.inf)<output_ros:return reject('EXPIRED_AUTHORIZATION')"
+ if code.count(old)!=1:raise ValueError('UPSTREAM_OUTPUT_EXPIRY_CONTEXT_DRIFT')
+ code=code.replace(old,new)
  namespace=dict(strict.__dict__);namespace['validate_observed_authorization']=validate_oracle
  exec(compile(code,__file__,'exec'),namespace);result=namespace['assess'](*args,**kwargs);result.update(mode='SIM_DEV_ORACLE',strict_depth_qualified=False,scope='SIMULATION_DEVELOPMENT_CAUSAL_EVIDENCE_ONLY');return result
