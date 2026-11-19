@@ -1,0 +1,33 @@
+{
+  "experiment": "sim_dev_oracle_forest10m_v1",
+  "mode": "UNQUALIFIED_SIM_DEV_DEBUG",
+  "planner": "NONLEARNING_DEPTH_MINCO_DIAGNOSTIC_BASELINE",
+  "seed": 3,
+  "maze_type": 5,
+  "tree_dist": 6,
+  "spawn": [
+    0.25,
+    -0.25,
+    2.0
+  ],
+  "goal": [
+    10.5,
+    0.75,
+    2.0
+  ],
+  "milestones_m": [
+    0.8,
+    3.0,
+    5.0,
+    10.0
+  ],
+  "limits": [
+    1.0,
+    8.0,
+    100.0
+  ],
+  "startup_wait_limit_s": 20.0,
+  "armed_freshness_s": 0.2,
+  "proof_ttl_s": 0.1,
+  "physical_qualified": false
+}
